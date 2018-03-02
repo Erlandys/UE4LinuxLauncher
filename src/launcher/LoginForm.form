@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form xmlns="http://www.intellij.com/uidesigner/form/" version="1" bind-to-class="launcher.LoginForm">
+  <grid id="27dc6" binding="loginPanel" layout-manager="GridLayoutManager" row-count="7" column-count="3" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
+    <margin top="0" left="0" bottom="0" right="0"/>
+    <constraints>
+      <xy x="20" y="20" width="700" height="350"/>
+    </constraints>
+    <properties>
+      <minimumSize width="700" height="320"/>
+      <preferredSize width="700" height="320"/>
+    </properties>
+    <border type="none">
+      <font/>
+    </border>
+    <children>
+      <component id="f4ff" class="javax.swing.JPasswordField" binding="passwordPasswordField" default-binding="true">
+        <constraints>
+          <grid row="2" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+            <preferred-size width="150" height="-1"/>
+          </grid>
+        </constraints>
+        <properties>
+          <nextFocusableComponent value="2ae2d"/>
+          <text value="Password:"/>
+        </properties>
+      </component>
+      <component id="80268" class="javax.swing.JTextField" binding="usernameTextField" default-binding="true">
+        <constraints>
+          <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
+            <preferred-size width="150" height="-1"/>
+          </grid>
+        </constraints>
+        <properties>
+          <text value="Username:"/>
+        </properties>
+      </component>
+      <component id="2ae2d" class="javax.swing.JButton" binding="loginButton" default-binding="true">
+        <constraints>
+          <grid row="3" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties>
+          <text value="Login"/>
+        </properties>
+      </component>
+      <hspacer id="ee5f0">
+        <constraints>
+          <grid row="3" column="2" row-span="1" col-span="1" vsize-policy="1" hsize-policy="6" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+        </constraints>
+      </hspacer>
+      <hspacer id="cfe66">
+        <constraints>
+          <grid row="3" column="0" row-span="1" col-span="1" vsize-policy="1" hsize-policy="6" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+        </constraints>
+      </hspacer>
+      <component id="8ee35" class="javax.swing.JTextPane" binding="unrealEngine4MarketplaceTextPane" default-binding="true">
+        <constraints>
+          <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="6" hsize-policy="6" anchor="0" fill="3" indent="0" use-parent-layout="false">
+            <preferred-size width="150" height="50"/>
+          </grid>
+        </constraints>
+        <properties>
+          <caretColor color="-3355444"/>
+          <contentType value="text/html"/>
+          <disabledTextColor color="-3355444"/>
+          <editable value="false"/>
+          <enabled value="true"/>
+          <focusable value="false"/>
+          <foreground color="-3355444"/>
+          <opaque value="false"/>
+          <requestFocusEnabled value="false"/>
+          <text value="&lt;html&gt;&#10;  &lt;head&gt;&#10;    &#10;  &lt;/head&gt;&#10;  &lt;body&gt;&#10;    &lt;p align=&quot;center&quot; style=&quot;margin-top: 10&quot; style=&quot;font-family: Lato, Helvetica, Arial, sans-serif&quot;&gt;&#10;      &lt;span style=&quot;font-size: 16px; color: #808080; text-shadow: 2px 2px #ff0000;&quot;&gt;Unreal Engine 4&lt;/span&gt;&lt;br&gt;&#10;      &lt;span style=&quot;font-size: 14px; color: #808080; text-shadow: 2px 2px #ff0000;&quot;&gt;Marketplace&lt;/span&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;&#10;      &lt;span style=&quot;font-size: 20px; color: #808080; text-shadow: 2px 2px #ff0000;&quot;&gt;Login&lt;/span&gt;&#10;    &lt;/p&gt;&#10;  &lt;/body&gt;&#10;&lt;/html&gt;&#10;" noi18n="true"/>
+        </properties>
+      </component>
+      <component id="dbae4" class="javax.swing.JTextPane" binding="errorInfo">
+        <constraints>
+          <grid row="5" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="0" fill="3" indent="0" use-parent-layout="false">
+            <preferred-size width="150" height="50"/>
+          </grid>
+        </constraints>
+        <properties>
+          <contentType value="text/html"/>
+          <editable value="false"/>
+          <focusable value="false"/>
+          <opaque value="false"/>
+          <requestFocusEnabled value="false"/>
+          <text value="" noi18n="true"/>
+          <visible value="true"/>
+        </properties>
+      </component>
+      <vspacer id="7c716">
+        <constraints>
+          <grid row="6" column="1" row-span="1" col-span="1" vsize-policy="6" hsize-policy="1" anchor="0" fill="2" indent="0" use-parent-layout="false"/>
+        </constraints>
+      </vspacer>
+      <component id="8b7ba" class="javax.swing.JProgressBar" binding="progressBar1" default-binding="true">
+        <constraints>
+          <grid row="4" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
+        </constraints>
+        <properties>
+          <stringPainted value="true"/>
+        </properties>
+      </component>
+    </children>
+  </grid>
+</form>
