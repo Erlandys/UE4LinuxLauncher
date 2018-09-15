@@ -45,7 +45,7 @@ public class Main {
     private void checkIfLoggedIn()
     {
         _loginForm = new LoginForm();
-        if (!_epicAPI.doAutoLogin(this)) {
+        if (!_epicAPI.doAutoLogin(this) || !_epicAPI.isLoggedIn()) {
             _loginForm.setLoginData(_epicAPI.getUsername(), _epicAPI.getPassword());
             _loginForm.allowActions();
         }
@@ -62,6 +62,7 @@ public class Main {
                     e.printStackTrace();
                 }
                 _epicAPI.readEngineData(_ue4InstallDir);
+                _epicAPI.getAccountInfo();
                 _epicAPI.updateCategories(false);
                 _epicAPI.generateItems();
                 _epicAPI.getOwnedAssets();
@@ -141,6 +142,8 @@ public class Main {
                 _mainForm.setEngineInstallDir(_ue4InstallDir);
                 _epicAPI.readEngineData(_ue4InstallDir);
             }
+            _epicAPI.isLoggedIn();
+            _epicAPI.getAccountInfo();
             _epicAPI.updateCategories(false);
             _epicAPI.generateItems();
             _epicAPI.getOwnedAssets();

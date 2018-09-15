@@ -1,5 +1,6 @@
 package launcher;
 
+import launcher.model.User;
 import launcher.objects.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -30,6 +31,7 @@ public class EpicAPI {
     private String _exchangeCode;
     private String _username;
     private String _password;
+    private User _user;
 
     public EpicAPI()
     {
@@ -69,7 +71,7 @@ public class EpicAPI {
             pos += exchangeCodeLength;
             int cookiesLength = data[pos++] << 24 | (data[pos++] & 0xFF) << 16 | (data[pos++] & 0xFF) << 8 | (data[pos++] & 0xFF);
             StringBuilder cookies = new StringBuilder();
-            for (int i = pos; i < pos + exchangeCodeLength; i++)
+            for (int i = pos; i < pos + cookiesLength; i++)
                 cookies.append((char) data[i]);
             pos += cookiesLength;
             int installDirLength = data[pos++] << 24 | (data[pos++] & 0xFF) << 16 | (data[pos++] & 0xFF) << 8 | (data[pos++] & 0xFF);
@@ -183,29 +185,78 @@ public class EpicAPI {
                 (byte)(value >> 8),
                 (byte)value };
     }
-
+    String _clientId = "";
     private void getCookies()
     {
+        String url = "";
         URL oracle = null;
         try {
-            oracle = new URL("https://accounts.unrealengine.com/login/doLogin");
+            oracle = new URL("https://accounts.unrealengine.com/login");
             HttpURLConnection conn = (HttpURLConnection) oracle.openConnection();
-            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-            String inputLine;
-
-
-            while ((inputLine = in.readLine()) != null) // Read File Line By Line
-            {
-                if (inputLine.contains("<input ") && inputLine.contains("name=\"")) {
-                    String inputName = inputLine.split("name=\"")[1].split("\"")[0];
-                    String inputValue = null;
-                    if (inputLine.contains("value=\""))
-                        inputValue = inputLine.split("value=\"")[1].split("\"")[0];
-                    _inputParameters.put(inputName, inputValue);
-                }
-            }
-            Main.getInstance().getLoginForm().increaseProgressBarValue(15);
+            conn.setInstanceFollowRedirects( false );
             parseCookies(conn.getHeaderFields().get("Set-Cookie"));
+            url = conn.getHeaderFields().get("Location").get(0);
+            Main.getInstance().getLoginForm().increaseProgressBarValue(4);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            oracle = new URL(url);
+            HttpURLConnection conn = (HttpURLConnection) oracle.openConnection();
+            conn.setInstanceFollowRedirects( false );
+            conn.setRequestProperty("Cookie", getCookiesString());
+            conn.setRequestProperty("DNT", "1");
+            url = conn.getHeaderFields().get("Location").get(0);
+            Main.getInstance().getLoginForm().increaseProgressBarValue(4);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            oracle = new URL(url);
+            HttpURLConnection conn = (HttpURLConnection) oracle.openConnection();
+            conn.setInstanceFollowRedirects( false );
+            conn.setRequestProperty("Cookie", getCookiesString());
+            conn.setRequestProperty("DNT", "1");
+            url = conn.getHeaderFields().get("Location").get(0);
+            _cookies.clear();
+            parseCookies(conn.getHeaderFields().get("Set-Cookie"));
+            Main.getInstance().getLoginForm().increaseProgressBarValue(4);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            oracle = new URL(url);
+            HttpURLConnection conn = (HttpURLConnection) oracle.openConnection();
+            conn.setRequestProperty("Cookie", getCookiesString());
+            conn.setRequestProperty("DNT", "1");
+            Main.getInstance().getLoginForm().increaseProgressBarValue(4);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        _clientId = url.split("client_id=")[1].split("&")[0];
+        try {
+            oracle = new URL("https://accounts.unrealengine.com/login/doLogin?client_id=" + _clientId + "&redirectUrl=https://www.unrealengine.com/");
+            HttpURLConnection conn = (HttpURLConnection) oracle.openConnection();
+            conn.setRequestProperty("Cookie", getCookiesString());
+            conn.setRequestProperty("DNT", "1");
+
+            if (conn.getResponseCode() == 200) {
+                BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String inputLine;
+                while ((inputLine = in.readLine()) != null) // Read File Line By Line
+                {
+                    if (inputLine.contains("<input ") && inputLine.contains("name=\"")) {
+                        String inputName = inputLine.split("name=\"")[1].split("\"")[0];
+                        String inputValue = null;
+                        if (inputLine.contains("value=\""))
+                            inputValue = inputLine.split("value=\"")[1].split("\"")[0];
+                        _inputParameters.put(inputName, inputValue);
+                    }
+                }
+                _cookies.clear();
+                parseCookies(conn.getHeaderFields().get("Set-Cookie"));
+                Main.getInstance().getLoginForm().increaseProgressBarValue(4);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -240,7 +291,7 @@ public class EpicAPI {
                 _cookies.put(splitted[0], "");
                 continue;
             }
-            _cookies.put(splitted[0], splitted[1]);
+            _cookies.put(splitted[0].trim(), splitted[1]);
         }
     }
 
@@ -249,7 +300,8 @@ public class EpicAPI {
         getCookies();
         _inputParameters.put("epic_username", username);
         _inputParameters.put("password", password);
-        _inputParameters.put("client_id", "43e2dea89b054198a703f6199bee6d5b");
+        _inputParameters.put("client_id", _clientId);
+        _inputParameters.put("redirectUrl", "https://www.unrealengine.com/en-US/blog");
 
         try
         {
@@ -263,16 +315,20 @@ public class EpicAPI {
             conn.setInstanceFollowRedirects( false );
             conn.setRequestProperty("Cookie", getCookiesString());
             conn.setRequestProperty("Origin", "allar_ue4_marketplace_commandline");
-            conn.setRequestProperty( "Content-Type", "application/x-www-form-urlencoded");
-            conn.setRequestProperty( "charset", "utf-8");
-            conn.setRequestProperty( "Content-Length", postDataLength + "");
+            conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            conn.setRequestProperty("charset", "utf-8");
+            conn.setRequestProperty("Content-Length", postDataLength + "");
+            String xsrf = _cookies.get("XSRF-TOKEN");
+            conn.setRequestProperty("X-XSRF-TOKEN", xsrf);
             conn.setRequestMethod("POST");
             try( DataOutputStream wr = new DataOutputStream( conn.getOutputStream())) {
                 wr.write(postData);
             }
-            if (conn.getResponseCode() == 302) {
+            if (conn.getResponseCode() == 200) {
+                _cookies.clear();
+                _cookies.put("XSRF-TOKEN", xsrf);
                 parseCookies(conn.getHeaderFields().get("Set-Cookie"));
-                Main.getInstance().getLoginForm().increaseProgressBarValue(15);
+                Main.getInstance().getLoginForm().increaseProgressBarValue(4);
                 authorize(username, password);
             }
             else
@@ -288,7 +344,7 @@ public class EpicAPI {
     {
         try
         {
-            URL oracle = new URL("https://accounts.unrealengine.com/authorize/index?client_id=43e2dea89b054198a703f6199bee6d5b&response_type=code&forWidget=true");
+            URL oracle = new URL("https://accounts.unrealengine.com/authorize/index?client_id=" + _clientId + "&response_type=code&forWidget=true");
             HttpURLConnection conn = (HttpURLConnection) oracle.openConnection();
             conn.setRequestProperty("Cookie", getCookiesString());
             conn.setRequestProperty("Origin", "allar_ue4_marketplace_commandline");
@@ -299,7 +355,7 @@ public class EpicAPI {
                 parseCookies(conn.getHeaderFields().get("Set-Cookie"));
                 BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                 String inputLine;
-                if ((inputLine = in.readLine()) != null) // Read File Line By Line
+                while ((inputLine = in.readLine()) != null) // Read File Line By Line
                 {
                     String code = inputLine.split("code=")[1].split("\"")[0];
                     Main.getInstance().getLoginForm().increaseProgressBarValue(15);
@@ -329,6 +385,7 @@ public class EpicAPI {
             conn.connect();
             if (conn.getResponseCode() == 302)
             {
+                parseCookies(conn.getHeaderFields().get("Set-Cookie"));
                 Main.getInstance().getLoginForm().increaseProgressBarValue(15);
                 OAuth(username, password);
             }
@@ -381,9 +438,8 @@ public class EpicAPI {
                 Main.getInstance().getLoginForm().increaseProgressBarValue(15);
                 OAuthExchange(username, password);
             }
-            else {
+            else
                 Main.getInstance().getLoginForm().badLogin();
-            }
         }
         catch (Exception e)
         {
@@ -463,6 +519,123 @@ public class EpicAPI {
         return false;
     }
 
+    public String getMarketplaceLocation()
+    {
+        try
+        {
+            URL oracle = new URL("https://www.unrealengine.com/marketplace");
+            HttpURLConnection conn = (HttpURLConnection) oracle.openConnection();
+            conn.setRequestProperty("Cookie", getCookiesString());
+            conn.setRequestProperty("Origin", "allar_ue4_marketplace_commandline");
+            conn.setRequestProperty("Authorization", "bearer " + _accessToken);
+            conn.addRequestProperty("Accept-Language", "en-US,en;q=0.8");
+            conn.addRequestProperty("host", "accounts.unrealengine.com");
+            conn.setInstanceFollowRedirects( false );
+            conn.connect();
+            if (conn.getResponseCode() == 302)
+            {
+                parseCookies(conn.getHeaderFields().get("Set-Cookie"));
+                return conn.getHeaderFields().get("Location").get(0);
+            }
+        }
+        catch (Exception e)
+        {
+            System.out.println(e);
+        }
+        return null;
+    }
+
+    private void getStore()
+    {
+        try
+        {
+            URL oracle = new URL(getMarketplaceLocation());
+            HttpURLConnection conn = (HttpURLConnection) oracle.openConnection();
+            conn.setRequestProperty("Cookie", getCookiesString());
+            conn.setRequestProperty("Origin", "allar_ue4_marketplace_commandline");
+            conn.setRequestProperty("Authorization", "bearer " + _accessToken);
+            conn.addRequestProperty("Accept-Language", "en-US,en;q=0.8");
+            conn.addRequestProperty("host", "accounts.unrealengine.com");
+            conn.setInstanceFollowRedirects( false );
+            conn.connect();
+            if (conn.getResponseCode() == 200) {
+                parseCookies(conn.getHeaderFields().get("Set-Cookie"));
+            }
+        }
+        catch (Exception e)
+        {
+            System.out.println(e);
+        }
+    }
+
+    public boolean isLoggedIn()
+    {
+        getStore();
+        try
+        {
+            URL oracle = new URL("https://www.unrealengine.com/marketplace/getAccountStatus");
+            HttpURLConnection conn = (HttpURLConnection) oracle.openConnection();
+            conn.setRequestProperty("Cookie", getCookiesString());
+            conn.setRequestProperty("Origin", "allar_ue4_marketplace_commandline");
+            conn.setRequestProperty("Authorization", "bearer " + _accessToken);
+            conn.addRequestProperty("Accept-Language", "en-US,en;q=0.8");
+            conn.addRequestProperty("host", "accounts.unrealengine.com");
+            conn.setInstanceFollowRedirects( false );
+            conn.connect();
+            if (conn.getResponseCode() == 200)
+            {
+                parseCookies(conn.getHeaderFields().get("Set-Cookie"));
+                BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String inputLine;
+                StringBuilder content = new StringBuilder();
+                while ((inputLine = in.readLine()) != null) // Read File Line By Line
+                {
+                    content.append(inputLine);
+                }
+                JSONObject json = new JSONObject(content.toString());
+                return json.getBoolean("isLoggedIn");
+            }
+        }
+        catch (Exception e)
+        {
+            System.out.println(e);
+        }
+        return false;
+    }
+
+    public void getAccountInfo()
+    {
+        try
+        {
+            URL oracle = new URL("https://www.unrealengine.com/marketplace/api/getAccountInfo");
+            HttpURLConnection conn = (HttpURLConnection) oracle.openConnection();
+            conn.setRequestProperty("Cookie", getCookiesString());
+            conn.setRequestProperty("Origin", "allar_ue4_marketplace_commandline");
+            conn.setRequestProperty("Authorization", "bearer " + _accessToken);
+            conn.addRequestProperty("Accept-Language", "en-US,en;q=0.8");
+            conn.addRequestProperty("host", "accounts.unrealengine.com");
+            conn.setInstanceFollowRedirects( false );
+            conn.connect();
+            if (conn.getResponseCode() == 200)
+            {
+                parseCookies(conn.getHeaderFields().get("Set-Cookie"));
+                BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                String inputLine;
+                StringBuilder content = new StringBuilder();
+                while ((inputLine = in.readLine()) != null) // Read File Line By Line
+                {
+                    content.append(inputLine);
+                }
+                JSONObject json = new JSONObject(content.toString());
+                _user = new User(json);
+            }
+        }
+        catch (Exception e)
+        {
+            System.out.println(e);
+        }
+    }
+
     public boolean updateCategories(boolean startupCheck)
     {
         try
@@ -472,7 +645,7 @@ public class EpicAPI {
             String data = "category=assets/recent&start=0";
             byte[] postData = data.getBytes( StandardCharsets.UTF_8 );
             int    postDataLength = postData.length;
-            URL oracle = new URL("https://www.unrealengine.com/assets/ajax-get-categories");
+            URL oracle = new URL("https://www.unrealengine.com/marketplace/assets/ajax-get-categories");
             HttpURLConnection conn = (HttpURLConnection) oracle.openConnection();
             conn.setRequestProperty("Host", "www.unrealengine.com");
             conn.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:58.0) Gecko/20100101 Firefox/58.0");
@@ -481,7 +654,7 @@ public class EpicAPI {
             conn.setRequestProperty("Authorization", "bearer " + _accessToken);
             conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
             conn.setRequestProperty("X-Requested-With", "XMLHttpRequest");
-            conn.setRequestProperty( "Content-Length", postDataLength + "");
+            conn.setRequestProperty("Content-Length", postDataLength + "");
             conn.setRequestProperty("Cookie", getCookiesString());
             conn.setDoInput( true );
             conn.setDoOutput( true );
