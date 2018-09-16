@@ -54,7 +54,7 @@ public class LoginForm extends JFrame {
             @Override
             public void focusGained(FocusEvent focusEvent) {
                 super.focusGained(focusEvent);
-                if (passwordPasswordField.getText().equalsIgnoreCase("Password:") || _changePassword) {
+                if (new String(passwordPasswordField.getPassword()).equalsIgnoreCase("Password:") || _changePassword) {
                     passwordPasswordField.setText("");
                     _changePassword = false;
                 }
@@ -63,7 +63,7 @@ public class LoginForm extends JFrame {
             @Override
             public void focusLost(FocusEvent focusEvent) {
                 super.focusGained(focusEvent);
-                if (passwordPasswordField.getText().equalsIgnoreCase(""))
+                if (new String(passwordPasswordField.getPassword()).equalsIgnoreCase(""))
                     passwordPasswordField.setText("Password:");
             }
         });
@@ -107,6 +107,33 @@ public class LoginForm extends JFrame {
         _changePassword = true;
     }
 
+    public void loginError(String error) {
+        setErrorText(error);
+        usernameTextField.setEnabled(true);
+        passwordPasswordField.setEnabled(true);
+        loginButton.setEnabled(true);
+        _changePassword = true;
+    }
+
+    public void clearError()
+    {
+        errorInfo.setText("");
+    }
+
+    public void setErrorText(String error)
+    {
+        errorInfo.setText("<html>\n" +
+                "  <head>\n" +
+                "    \n" +
+                "  </head>\n" +
+                "  <body>\n" +
+                "    <p align=\"center\" style=\"margin-top: 10\" style=\"font-family: Lato, Helvetica, Arial, sans-serif, BrutalType; font-size: 10px;color: #dc5353; font-weight: bold;\">\n" +
+                "    \t" + error + "\n" +
+                "    </p>\n" +
+                "  </body>\n" +
+                "</html>");
+    }
+
     public void setLoginData(String username, String password) {
         usernameTextField.setText(username);
         passwordPasswordField.setText(password);
@@ -122,7 +149,9 @@ public class LoginForm extends JFrame {
             passwordPasswordField.setEnabled(false);
             loginButton.setEnabled(false);
             progressBar1.setValue(0);
-            Main.getInstance().getEpicAPI().doLogin(usernameTextField.getText(), passwordPasswordField.getText());
+            Main.getInstance().getUser().setUsername(usernameTextField.getText());
+            Main.getInstance().getUser().setPassword(new String(passwordPasswordField.getPassword()));
+            Main.getInstance().getEpicAPI().doLogin();
         }
     }
 }

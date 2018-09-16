@@ -1,14 +1,16 @@
 package launcher;
 
-import launcher.objects.EpicCategory;
-import launcher.objects.EpicItem;
-import launcher.objects.EpicOwnedAsset;
-import launcher.objects.HtmlUtils;
+import launcher.managers.CookiesManager;
+import launcher.managers.InputsManager;
+import launcher.model.User;
+import launcher.objects.*;
 
+import java.io.File;
 import java.util.Collection;
 import java.util.HashMap;
 
 public class Main {
+    public static boolean DEBUG = false;
     private static Main _instance;
 
     public static void main(String[] args) {
@@ -19,25 +21,32 @@ public class Main {
     private MainForm _mainForm;
     private EpicAPI _epicAPI;
     private DownloadForm _downloadForm;
-    private HashMap<String, EpicCategory> _categories;
-    private HashMap<String, EpicItem> _items;
-    private HashMap<String, EpicOwnedAsset> _ownedAssets;
-    private String _username;
-    private String _ue4InstallDir;
-    private double _engineVersion;
-    private HashMap<String, String> _projects;
-    private String _currentProject;
+    private TwoFactorForm _twoFactorForm;
+    private User _user;
 
     private Main()
     {
+        if (DEBUG)
+        {
+            File directory = new File("output");
+            if (directory.exists() && directory.isDirectory())
+            {
+                File files[] = directory.listFiles();
+                if (files != null)
+                    for (File file : files)
+                    {
+                        if (file.exists())
+                            file.delete();
+                    }
+                directory.delete();
+            }
+        }
+        CookiesManager.getInstance();
+        InputsManager.getInstance();
+        _user = new User();
         _epicAPI = new EpicAPI();
-        _categories = new HashMap<>();
-        _items = new HashMap<>();
-        _ownedAssets = new HashMap<>();
         _downloadForm = null;
-        _ue4InstallDir = "";
-        _engineVersion = 0;
-        _projects = new HashMap<>();
+        _twoFactorForm = null;
         checkIfLoggedIn();
         HtmlUtils.initData();
     }
@@ -45,23 +54,22 @@ public class Main {
     private void checkIfLoggedIn()
     {
         _loginForm = new LoginForm();
-        if (!_epicAPI.doAutoLogin(this) || !_epicAPI.isLoggedIn()) {
-            _loginForm.setLoginData(_epicAPI.getUsername(), _epicAPI.getPassword());
+        if (!_epicAPI.doAutoLogin(this) || !_epicAPI.isLoggedIn(_user.getAccessToken())) {
+            _loginForm.setLoginData(_user.getUsername(), _user.getPassword());
             _loginForm.allowActions();
         }
         else {
             _loginForm.dispose();
-            _username = _epicAPI.getUsername();
-            _mainForm = new MainForm(_epicAPI.getUsername());
+            _mainForm = new MainForm(_user.getUsername());
             new Thread(() -> {
-                _mainForm.setEngineInstallDir(getUe4InstallDir());
+                _mainForm.setEngineInstallDir(_user.getUe4InstallDir());
                 _mainForm.disableActions();
                 try {
                     Thread.sleep(500);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                _epicAPI.readEngineData(_ue4InstallDir);
+                _epicAPI.readEngineData(_user.getUe4InstallDir());
                 _epicAPI.getAccountInfo();
                 _epicAPI.updateCategories(false);
                 _epicAPI.generateItems();
@@ -85,64 +93,26 @@ public class Main {
         return _mainForm;
     }
 
-    public EpicCategory getCategoryByPath(String path)
-    {
-        return _categories.values().stream().filter(category -> category.getPath().equals(path)).findFirst().orElse(null);
+    public TwoFactorForm getTwoFactorForm() {
+        return _twoFactorForm;
     }
 
-    public EpicCategory getCategory(String name)
-    {
-        return _categories.get(name);
+    public void setTwoFactorForm(TwoFactorForm twoFactorForm) {
+        _twoFactorForm = twoFactorForm;
     }
 
-    public EpicItem getItemByCatalogId(String catalogItemId)
-    {
-        return _items.get(catalogItemId);
-    }
-
-    public boolean containsOwnedAsset(String catalogItemId)
-    {
-        return _ownedAssets.containsKey(catalogItemId);
-    }
-
-    public EpicOwnedAsset getOwnedAsset(String catalogItemId)
-    {
-        return _ownedAssets.get(catalogItemId);
-    }
-
-    public Collection<EpicOwnedAsset> getOwnedAssets()
-    {
-        return _ownedAssets.values();
-    }
-
-    public void addOwnedAsset(EpicOwnedAsset asset)
-    {
-        _ownedAssets.put(asset.getCatalogItemId(), asset);
-    }
-
-    public void clearOwnedAssets()
-    {
-        _ownedAssets.clear();
-    }
-
-    public void addItem(EpicItem item)
-    {
-        _items.put(item.getCatalogItemId(), item);
-    }
-
-    public void successfulLogin(String username)
+    public void successfulLogin()
     {
         _loginForm.dispose();
-        _username = username;
-        _mainForm = new MainForm(_username);
+        _mainForm = new MainForm(_user.getUsername());
         new Thread(() -> {
             _mainForm.disableActions();
-            if (_ue4InstallDir != null && _ue4InstallDir.length() > 0)
+            if (_user.getUe4InstallDir() != null && _user.getUe4InstallDir().length() > 0)
             {
-                _mainForm.setEngineInstallDir(_ue4InstallDir);
-                _epicAPI.readEngineData(_ue4InstallDir);
+                _mainForm.setEngineInstallDir(_user.getUe4InstallDir());
+                _epicAPI.readEngineData(_user.getUe4InstallDir());
             }
-            _epicAPI.isLoggedIn();
+            _epicAPI.isLoggedIn(_user.getAccessToken());
             _epicAPI.getAccountInfo();
             _epicAPI.updateCategories(false);
             _epicAPI.generateItems();
@@ -150,24 +120,6 @@ public class Main {
             getMainForm().hideLoading();
             getMainForm().enableActions();
         }).start();
-    }
-
-    public void createCategory(String path, String name)
-    {
-        _categories.put(name, new EpicCategory(path, name));
-    }
-
-    public void updateCategoriesList()
-    {
-        _mainForm.updateCategoriesList(_categories.keySet());
-    }
-
-    public String getUsername() {
-        return _username;
-    }
-
-    public void setUsername(String username) {
-        _username = username;
     }
 
     public void showDownloadForm(EpicItem item)
@@ -179,41 +131,23 @@ public class Main {
         return _downloadForm;
     }
 
-    public String getUe4InstallDir() {
-        return _ue4InstallDir;
-    }
-
-    public void setUe4InstallDir(String ue4InstallDir) {
-        _ue4InstallDir = ue4InstallDir;
-    }
-
-    public double getEngineVersion() {
-        return _engineVersion;
-    }
-
-    public void setEngineVersion(double engineVersion) {
-        _engineVersion = engineVersion;
-        _mainForm.setEngineVersion(engineVersion);
-    }
-
-    public HashMap<String, String> getProjects() {
-        return _projects;
-    }
-
-    public String getCurrentProject() {
-        return _currentProject;
-    }
-
-    public void setCurrentProject(String currentProject) {
-        _currentProject = currentProject;
-    }
-
     public void doLogout()
     {
         _mainForm.dispose();
+        File file = new File("data.dat");
+        if (file.exists())
+            file.delete();
+        User oldUser = _user;
+        _user = new User();
+        _user.setUsername(oldUser.getUsername());
+        _user.setPassword(oldUser.getPassword());
         _loginForm = new LoginForm();
-        _loginForm.setLoginData(_epicAPI.getUsername(), _epicAPI.getPassword());
+        _loginForm.setLoginData(_user.getUsername(), _user.getPassword());
         _loginForm.allowActions();
+    }
+
+    public User getUser() {
+        return _user;
     }
 
     public static Main getInstance()

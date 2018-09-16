@@ -107,9 +107,9 @@ public class MainForm extends JFrame {
         usernamePane.setText(username);
         ((HTMLEditorKit) _textPane1.getEditorKitForContentType("text/html")).setAutoFormSubmission(false);
         list1.addListSelectionListener(listSelectionEvent -> {
-            if (_currentCategory == Main.getInstance().getCategory(list1.getSelectedValue().toString()) && !_viewingItem)
+            if (_currentCategory == Main.getInstance().getUser().getCategory(list1.getSelectedValue().toString()) && !_viewingItem)
                 return;
-            _currentCategory = Main.getInstance().getCategory(list1.getSelectedValue().toString());
+            _currentCategory = Main.getInstance().getUser().getCategory(list1.getSelectedValue().toString());
             _itemsPerPage = 8;
             _viewingItem = false;
             updateMarketplaceList();
@@ -238,7 +238,7 @@ public class MainForm extends JFrame {
             if (e.getDescription().startsWith("project")) {
                 String data[] = e.getDescription().split((" "));
                 _selectedProject.setText(data[1]);
-                Main.getInstance().setCurrentProject(data[1]);
+                Main.getInstance().getUser().setCurrentProject(data[1]);
                 updateProjectsList();
             }
         });
@@ -264,7 +264,7 @@ public class MainForm extends JFrame {
                 int extent = scrollBar.getModel().getExtent();
                 if (scrollBar.getMaximum() - (scrollBar.getValue() + extent) > 6)
                     return;
-                if (_itemsPerPage >= Main.getInstance().getOwnedAssets().size())
+                if (_itemsPerPage >= Main.getInstance().getUser().getOwnedAssets().size())
                     return;
                 _itemsPerPage += 8;
                 updateOwnedAssetsList();
@@ -273,7 +273,7 @@ public class MainForm extends JFrame {
         _selectButton.addActionListener(actionEvent -> {
             JFileChooser chooser;
             chooser = new JFileChooser();
-            chooser.setCurrentDirectory(new File(Main.getInstance().getUe4InstallDir().length() < 1 ? "." : Main.getInstance().getUe4InstallDir()));
+            chooser.setCurrentDirectory(new File(Main.getInstance().getUser().getUe4InstallDir().length() < 1 ? "." : Main.getInstance().getUser().getUe4InstallDir()));
             chooser.setDialogTitle("Select UE4 install directory");
             chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
             chooser.setAcceptAllFileFilterUsed(false);
@@ -283,10 +283,10 @@ public class MainForm extends JFrame {
         _updateButton.addActionListener(actionEvent -> Main.getInstance().getEpicAPI().readEngineData());
         _launchUE4Button.addActionListener(actionEvent -> {
             new Thread(() -> {
-                String launch = Main.getInstance().getUe4InstallDir() + "/Engine/Binaries/Linux/UE4Editor";
+                String launch = Main.getInstance().getUser().getUe4InstallDir() + "/Engine/Binaries/Linux/UE4Editor";
                 String project = "";
-                if (Main.getInstance().getCurrentProject() != null && Main.getInstance().getCurrentProject().length() > 0)
-                    project = Main.getInstance().getProjects().get(Main.getInstance().getCurrentProject()) + Main.getInstance().getCurrentProject() + ".uproject";
+                if (Main.getInstance().getUser().getCurrentProject() != null && Main.getInstance().getUser().getCurrentProject().length() > 0)
+                    project = Main.getInstance().getUser().getProjects().get(Main.getInstance().getUser().getCurrentProject()) + Main.getInstance().getUser().getCurrentProject() + ".uproject";
                 File file = new File(launch);
                 file.setExecutable(true);
                 try {
@@ -426,11 +426,11 @@ public class MainForm extends JFrame {
                 asset = asset.replaceAll("%title%", name);
                 asset = asset.replaceAll("%creator%", item.getSellerName());
                 asset = asset.replaceAll("%image%", item.getThumbnail());
-                if (Main.getInstance().getOwnedAsset(item.getCatalogItemId()) != null) {
+                if (Main.getInstance().getUser().getOwnedAsset(item.getCatalogItemId()) != null) {
                     asset = asset.replaceAll("%owned%", HtmlUtils.getAssetDivOwner());
-                    asset = asset.replaceAll("%price%", item.isCompatible(Main.getInstance().getEngineVersion()) ? "" : "Not compatible");
+                    asset = asset.replaceAll("%price%", item.isCompatible(Main.getInstance().getUser().getEngineVersion()) ? "" : "Not compatible");
                 } else {
-                    asset = asset.replaceAll("%owned%", item.isCompatible(Main.getInstance().getEngineVersion()) ? "" : "Not compatible");
+                    asset = asset.replaceAll("%owned%", item.isCompatible(Main.getInstance().getUser().getEngineVersion()) ? "" : "Not compatible");
                     asset = asset.replaceAll("%price%", item.getPrice() == 0 ? "Free" : (item.getPrice() + " USD"));
                 }
                 data.append(asset);
@@ -458,9 +458,9 @@ public class MainForm extends JFrame {
                 "    </p><br>");
         int itemsInLine = 4;
         int i = 0;
-        if (Main.getInstance() != null && Main.getInstance().getOwnedAssets() != null) {
+        if (Main.getInstance() != null && Main.getInstance().getUser().getOwnedAssets() != null) {
             data.append("<table class=\"asset-container\">");
-            for (EpicOwnedAsset ownedAsset : Main.getInstance().getOwnedAssets()) {
+            for (EpicOwnedAsset ownedAsset : Main.getInstance().getUser().getOwnedAssets()) {
                 if (i >= _itemsPerPage)
                     break;
                 EpicItem item = ownedAsset.getItem();
@@ -475,11 +475,11 @@ public class MainForm extends JFrame {
                 asset = asset.replaceAll("%title%", name);
                 asset = asset.replaceAll("%creator%", item.getSellerName());
                 asset = asset.replaceAll("%image%", item.getThumbnail());
-                if (Main.getInstance().getOwnedAsset(item.getCatalogItemId()) != null) {
+                if (Main.getInstance().getUser().getOwnedAsset(item.getCatalogItemId()) != null) {
                     asset = asset.replaceAll("%owned%", HtmlUtils.getAssetDivOwner());
-                    asset = asset.replaceAll("%price%", item.isCompatible(Main.getInstance().getEngineVersion()) ? "" : "Not compatible");
+                    asset = asset.replaceAll("%price%", item.isCompatible(Main.getInstance().getUser().getEngineVersion()) ? "" : "Not compatible");
                 } else {
-                    asset = asset.replaceAll("%owned%", item.isCompatible(Main.getInstance().getEngineVersion()) ? "" : "Not compatible");
+                    asset = asset.replaceAll("%owned%", item.isCompatible(Main.getInstance().getUser().getEngineVersion()) ? "" : "Not compatible");
                     asset = asset.replaceAll("%price%", item.getPrice() == 0 ? "Free" : (item.getPrice() + " USD"));
                 }
                 data.append(asset);
@@ -505,7 +505,7 @@ public class MainForm extends JFrame {
 
         String data = "";
 
-        EpicItem item = Main.getInstance().getItemByCatalogId(catalogItemId);
+        EpicItem item = Main.getInstance().getUser().getItemByCatalogId(catalogItemId);
 
         if (item != null) {
             data = HtmlUtils.getAssetInfo();
@@ -566,7 +566,7 @@ public class MainForm extends JFrame {
 
             String downloadButton;
 
-            if (Main.getInstance().containsOwnedAsset(catalogItemId))
+            if (Main.getInstance().getUser().containsOwnedAsset(catalogItemId))
                 downloadButton = "<div class=\"download-button\"><a href=\"download_item " + catalogItemId + "\" class=\"btn\">Download</a></div>";
             else
                 downloadButton = "<div class=\"download-button\"><a href=\"https://www.unrealengine.com/marketplace/" + item.getUrlPart() + "\" class=\"btn\">Go to Website</a></div><br>Price: " + (item.getPrice() == 0 ? "Free" : (item.getPrice() + " USD"));
@@ -592,20 +592,20 @@ public class MainForm extends JFrame {
     }
 
     private void startDownload(String catalogItemId) {
-        if (Main.getInstance().getCurrentProject() == null || Main.getInstance().getCurrentProject().length() < 1) {
+        if (Main.getInstance().getUser().getCurrentProject() == null || Main.getInstance().getUser().getCurrentProject().length() < 1) {
             JOptionPane.showMessageDialog(this, "You have to select project in library!", "No selected project!", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        EpicItem item = Main.getInstance().getItemByCatalogId(catalogItemId);
+        EpicItem item = Main.getInstance().getUser().getItemByCatalogId(catalogItemId);
         if (item == null)
             return;
 
-        if (!item.isCompatible(Main.getInstance().getEngineVersion())) {
-            JOptionPane.showMessageDialog(this, "This asset pack is not compatible with your [" + Main.getInstance().getEngineVersion() + "] engine version!", "No compatible!", JOptionPane.ERROR_MESSAGE);
+        if (!item.isCompatible(Main.getInstance().getUser().getEngineVersion())) {
+            JOptionPane.showMessageDialog(this, "This asset pack is not compatible with your [" + Main.getInstance().getUser().getEngineVersion() + "] engine version!", "No compatible!", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        boolean hasItem = Main.getInstance().containsOwnedAsset(catalogItemId);
+        boolean hasItem = Main.getInstance().getUser().containsOwnedAsset(catalogItemId);
         if (!hasItem)
             return;
 
@@ -624,7 +624,7 @@ public class MainForm extends JFrame {
         if (openFolder) {
             if (Desktop.isDesktopSupported()) {
                 try {
-                    Desktop.getDesktop().open(new File(Main.getInstance().getProjects().get(Main.getInstance().getCurrentProject())));
+                    Desktop.getDesktop().open(new File(Main.getInstance().getUser().getProjects().get(Main.getInstance().getUser().getCurrentProject())));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -659,16 +659,16 @@ public class MainForm extends JFrame {
         StringBuilder data = new StringBuilder("<p align=\"center\" style=\"margin-top: 10\" style=\"font-family: Lato, Helvetica, Arial, sans-serif\">\n" +
                 "      <span style=\"font-size: 16px; color: #808080; text-shadow: 2px 2px #ff0000;\">Select available project</span><br>\n" +
                 "    </p><br>");
-        if (Main.getInstance().getProjects().size() > 0) {
+        if (Main.getInstance().getUser().getProjects().size() > 0) {
             data.append("<table style=\"text-align: center;\">");
             int i = 0;
             int elementsInRow = 4;
-            for (String projectName : Main.getInstance().getProjects().keySet()) {
+            for (String projectName : Main.getInstance().getUser().getProjects().keySet()) {
                 if (i % elementsInRow == 0)
                     data.append("<tr>");
                 data.append("<td width=235 style=\"border: 1px solid #999999; text-align: center;");
                 data.append("\"><a href=\"project ").append(projectName).append("\"");
-                if (projectName.equals(Main.getInstance().getCurrentProject()))
+                if (projectName.equals(Main.getInstance().getUser().getCurrentProject()))
                     data.append(" style=\"color: #ffa64d !important;\"");
                 data.append(">").append(projectName).append("</a>").append("</td>");
                 i++;
