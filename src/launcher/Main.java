@@ -14,6 +14,8 @@ public class Main {
     private static Main _instance;
 
     public static void main(String[] args) {
+        if (args.length > 0 && args[0].equalsIgnoreCase("-d"))
+            DEBUG = true;
         _instance = new Main();
     }
 
@@ -40,6 +42,9 @@ public class Main {
                     }
                 directory.delete();
             }
+            File logFile = new File("log.txt");
+            if (logFile.exists())
+                logFile.delete();
         }
         CookiesManager.getInstance();
         InputsManager.getInstance();

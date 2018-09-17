@@ -123,7 +123,10 @@ public class InputsManager {
 		if (Main.DEBUG) {
 			StringBuilder result = new StringBuilder();
 			_inputs.values().forEach(input -> {
-				result.append(input.toString()).append("\n");
+				if (input.getName().equalsIgnoreCase("password"))
+					result.append("password=*******;\n");
+				else
+					result.append(input.toString()).append("\n");
 			});
 			Utils.printDebug("Add inputs", result.toString());
 		}
@@ -166,7 +169,10 @@ public class InputsManager {
 		if (Main.DEBUG) {
 			StringBuilder result = new StringBuilder();
 			_inputs.values().forEach(input -> {
-				result.append(input.toString()).append("\n");
+				if (input.getName().equalsIgnoreCase("password"))
+					result.append("password=*******;\n");
+				else
+					result.append(input.toString()).append("\n");
 			});
 			Utils.printDebug("Input data from", result.toString());
 		}

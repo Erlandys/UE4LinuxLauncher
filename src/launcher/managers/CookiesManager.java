@@ -46,7 +46,7 @@ public class CookiesManager {
 		if (nameValue.length < 2)
 			return;
 		nameValue[0] = nameValue[0].trim();
-/*		switch (nameValue[0].toLowerCase())
+		switch (nameValue[0].toLowerCase())
 		{
 			case "path":
 				return;
@@ -62,7 +62,7 @@ public class CookiesManager {
 				return;
 			case "version":
 				return;
-		}*/
+		}
 		_cookies.put(nameValue[0].toLowerCase(), new Cookie(nameValue[0], nameValue[1]));
 	}
 

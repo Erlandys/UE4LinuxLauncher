@@ -90,23 +90,6 @@ public class LoginForm extends JFrame {
         loginButton.setEnabled(true);
     }
 
-    public void badLogin() {
-        errorInfo.setText("<html>\n" +
-                "  <head>\n" +
-                "    \n" +
-                "  </head>\n" +
-                "  <body>\n" +
-                "    <p align=\"center\" style=\"margin-top: 10\" style=\"font-family: Lato, Helvetica, Arial, sans-serif, BrutalType; font-size: 10px;color: #dc5353; font-weight: bold;\">\n" +
-                "    \tSorry the credentials you are using are invalid.\n" +
-                "    </p>\n" +
-                "  </body>\n" +
-                "</html>");
-        usernameTextField.setEnabled(true);
-        passwordPasswordField.setEnabled(true);
-        loginButton.setEnabled(true);
-        _changePassword = true;
-    }
-
     public void loginError(String error) {
         setErrorText(error);
         usernameTextField.setEnabled(true);

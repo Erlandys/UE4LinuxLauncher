@@ -53,6 +53,13 @@ public class TwoFactorForm extends JFrame {
 				super.keyPressed(e);
 			}
 		});
+		addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				super.windowClosing(e);
+				Main.getInstance().getLoginForm().allowActions();
+			}
+		});
 	}
 
 	public void showError(String error) {

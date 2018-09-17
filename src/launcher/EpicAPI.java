@@ -180,7 +180,7 @@ public class EpicAPI {
 				Main.getInstance().getLoginForm().increaseProgressBarValue(4);
 			}
 			else {
-				Main.getInstance().getLoginForm().badLogin();
+				Main.getInstance().getLoginForm().loginError("Error: #1001");
 				Utils.printError("getCookies1", conn.getResponseCode());
 				return false;
 			}
@@ -198,7 +198,7 @@ public class EpicAPI {
 				Main.getInstance().getLoginForm().increaseProgressBarValue(4);
 			}
 			else {
-				Main.getInstance().getLoginForm().badLogin();
+				Main.getInstance().getLoginForm().loginError("Error: #1002");
 				Utils.printError("getCookies2", conn.getResponseCode());
 				return false;
 			}
@@ -217,7 +217,7 @@ public class EpicAPI {
 				Main.getInstance().getLoginForm().increaseProgressBarValue(4);
 			}
 			else {
-				Main.getInstance().getLoginForm().badLogin();
+				Main.getInstance().getLoginForm().loginError("Error: #1003");
 				Utils.printError("getCookies3", conn.getResponseCode());
 				return false;
 			}
@@ -232,7 +232,7 @@ public class EpicAPI {
 				Main.getInstance().getLoginForm().increaseProgressBarValue(4);
 				if (!url.contains("client_id=")) {
 					Utils.printOutput(url, Utils.getContent(conn, true));
-					Main.getInstance().getLoginForm().badLogin();
+					Main.getInstance().getLoginForm().loginError("Error: #1004\nCan't get client ID.");
 					return false;
 				}
 				Main.getInstance().getUser().setClientId(url.split("client_id=")[1]);
@@ -241,7 +241,7 @@ public class EpicAPI {
 			}
 			else {
 				Utils.printOutput(url, Utils.getContent(conn, false));
-				Main.getInstance().getLoginForm().badLogin();
+				Main.getInstance().getLoginForm().loginError("Error: #1005");
 				Utils.printError("getCookies4", conn.getResponseCode());
 				return false;
 			}
@@ -264,9 +264,9 @@ public class EpicAPI {
 				Main.getInstance().getLoginForm().increaseProgressBarValue(4);
 			}
 			else {
-				Main.getInstance().getLoginForm().badLogin();
+				CookiesManager.getInstance().addCookies(conn);
+				Main.getInstance().getLoginForm().increaseProgressBarValue(4);
 				Utils.printError("getCookies5", conn.getResponseCode());
-				return false;
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -275,8 +275,10 @@ public class EpicAPI {
 	}
 
 	public void doLogin() {
-		if (!getCookies())
+		if (!getCookies()) {
+			Main.getInstance().getLoginForm().allowActions();
 			return;
+		}
 
 		InputsManager.getInstance().addInput("epic_username", Main.getInstance().getUser().getUsername());
 		InputsManager.getInstance().addInput("password", Main.getInstance().getUser().getPassword());
@@ -390,7 +392,7 @@ public class EpicAPI {
 				exchange(code);
 			}
 			else {
-				Main.getInstance().getLoginForm().badLogin();
+				Main.getInstance().getLoginForm().loginError("Error: #1006");
 				Utils.printError("authorize", conn.getResponseCode());
 			}
 		} catch (Exception e) {
@@ -415,7 +417,7 @@ public class EpicAPI {
 				OAuth();
 			}
 			else
-				Main.getInstance().getLoginForm().badLogin();
+				Main.getInstance().getLoginForm().loginError("Error: #1007");
 		} catch (Exception e) {
 			System.out.println(e);
 		}
@@ -452,7 +454,7 @@ public class EpicAPI {
 				OAuthExchange();
 			}
 			else
-				Main.getInstance().getLoginForm().badLogin();
+				Main.getInstance().getLoginForm().loginError("Error: #1008");
 		} catch (Exception e) {
 			System.out.println(e);
 		}
@@ -527,7 +529,7 @@ public class EpicAPI {
 			}
 			else {
 				if (!auto)
-					Main.getInstance().getLoginForm().badLogin();
+					Main.getInstance().getLoginForm().loginError("Error: #1009");
 				return false;
 			}
 		} catch (Exception e) {
