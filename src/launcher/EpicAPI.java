@@ -2,22 +2,24 @@ package launcher;
 
 import launcher.managers.CookiesManager;
 import launcher.managers.InputsManager;
-import launcher.model.User;
 import launcher.objects.*;
 import launcher.utils.Utils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
@@ -428,20 +430,22 @@ public class EpicAPI {
 		if (Main.getInstance().getUser().isTwoFactorAuth()) {
 			InputsManager.getInstance().addInput("grant_type", "exchange_code");
 			InputsManager.getInstance().addInput("exchange_code", twoFactorOAuth());
+			InputsManager.getInstance().addInput("includePerms", "true");
 		}
 		else {
 			InputsManager.getInstance().addInput("grant_type", "password");
 			InputsManager.getInstance().addInput("username", Main.getInstance().getUser().getUsername());
 			InputsManager.getInstance().addInput("password", Main.getInstance().getUser().getPassword());
+			InputsManager.getInstance().addInput("token_type", "eg1");
+			InputsManager.getInstance().addInput("includePerms", "false");
 		}
-		InputsManager.getInstance().addInput("includePerms", "true");
 
 		try {
 			URL oracle = new URL("https://account-public-service-prod03.ol.epicgames.com/account/api/oauth/token");
 			HttpURLConnection conn = (HttpURLConnection) oracle.openConnection();
 			conn.setDoInput(true);
 			conn.setInstanceFollowRedirects(false);
-			conn.setRequestProperty("Authorization", "basic MzRhMDJjZjhmNDQxNGUyOWIxNTkyMTg3NmRhMzZmOWE6ZGFhZmJjY2M3Mzc3NDUwMzlkZmZlNTNkOTRmYzc2Y2Y=");
+			conn.setRequestProperty("Authorization", "basic MzQ0NmNkNzI2OTRjNGE0NDg1ZDgxYjc3YWRiYjIxNDE6OTIwOWQ0YTVlMjVhNDU3ZmI5YjA3NDg5ZDMxM2I0MWE=");
 			conn.setRequestProperty("Origin", "allar_ue4_marketplace_commandline");
 
 			InputsManager.getInstance().writeData(conn);

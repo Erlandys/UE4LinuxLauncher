@@ -1,6 +1,6 @@
 <component name="ArtifactManager">
   <artifact type="jar" build-on-make="true" name="UnrealEngineLauncher:jar">
-    <output-path>$PROJECT_DIR$/out/artifacts/UnrealEngineLauncher_jar</output-path>
+    <output-path>$PROJECT_DIR$/Compiled</output-path>
     <root id="archive" name="UnrealEngineLauncher.jar">
       <element id="module-output" name="UnrealEngineLauncher" />
     </root>
