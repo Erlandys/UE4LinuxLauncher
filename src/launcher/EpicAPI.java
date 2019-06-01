@@ -92,9 +92,14 @@ public class EpicAPI {
 			Main.getInstance().getMainForm().updateProjectsList();
 			return;
 		}
-		File f = new File(enginePath + "/Engine/Binaries/Linux/UE4Editor.version");
+		String versionFile = "/Engine/Binaries/Linux/UE4Editor.version";
+		File f = new File(enginePath + versionFile);
+		if (!f.exists()) {
+			versionFile = "/Engine/Binaries/UE4Editor.version";
+			f = new File(enginePath + versionFile);
+		}
 		if (f.exists()) {
-			Path path = Paths.get(enginePath + "/Engine/Binaries/Linux/UE4Editor.version");
+			Path path = Paths.get(enginePath + versionFile);
 			try {
 				String data = new String(Files.readAllBytes(path));
 				JSONObject jsonObject = new JSONObject(data);
