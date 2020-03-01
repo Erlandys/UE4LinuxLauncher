@@ -7,5 +7,6 @@
     </content>
     <orderEntry type="jdk" jdkName="1.8" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" exported="" name="sqlite-jdbc-3.30.1" level="project" />
   </component>
 </module>

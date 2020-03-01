@@ -41,7 +41,7 @@
       </component>
       <component id="cde50" class="javax.swing.JLabel" binding="_loadingLabel">
         <constraints>
-          <grid row="15" column="1" row-span="1" col-span="13" vsize-policy="0" hsize-policy="0" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
+          <grid row="15" column="6" row-span="1" col-span="8" vsize-policy="0" hsize-policy="0" anchor="0" fill="0" indent="0" use-parent-layout="false"/>
         </constraints>
         <properties>
           <text value=""/>
@@ -353,6 +353,7 @@
           <grid row="3" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="0" fill="1" indent="0" use-parent-layout="false"/>
         </constraints>
         <properties>
+          <enabled value="false"/>
           <text value="Marketplace"/>
         </properties>
       </component>

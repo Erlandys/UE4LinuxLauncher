@@ -1,5 +1,8 @@
 package launcher;
 
+import launcher.managers.AuthenticationManager;
+import launcher.managers.MarketplaceManager;
+
 import javax.swing.*;
 import java.awt.event.*;
 
@@ -53,13 +56,13 @@ public class TwoFactorForm extends JFrame {
 				super.keyPressed(e);
 			}
 		});
-		addWindowListener(new WindowAdapter() {
+		/*addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosing(WindowEvent e) {
 				super.windowClosing(e);
 				Main.getInstance().getLoginForm().allowActions();
 			}
-		});
+		});*/
 	}
 
 	public void showError(String error) {
@@ -77,6 +80,15 @@ public class TwoFactorForm extends JFrame {
 		_confirmButton.setEnabled(true);
 		_securityCodeTextField.setEnabled(true);
 	}
+
+	public void start() {
+		setVisible(true);
+		_securityCodeTextField.setText("Security code");
+		errorInfo.setText("");
+		_confirmButton.setEnabled(true);
+		_securityCodeTextField.setEnabled(true);
+	}
+
 	private class PerformTwoFactor extends Thread {
 
 		@Override
@@ -84,7 +96,16 @@ public class TwoFactorForm extends JFrame {
 			errorInfo.setText("");
 			_confirmButton.setEnabled(false);
 			_securityCodeTextField.setEnabled(false);
-			Main.getInstance().getEpicAPI().confirmTwoFactorAuth(_securityCodeTextField.getText());
+			setVisible(false);
+			AuthenticationManager.getInstance().confirmTwoFactorAuth(_securityCodeTextField.getText());
 		}
+	}
+
+	public static TwoFactorForm getInstance() {
+		return TwoFactorForm.SingletonHolder._instance;
+	}
+
+	private static class SingletonHolder {
+		protected static final TwoFactorForm _instance = new TwoFactorForm();
 	}
 }
