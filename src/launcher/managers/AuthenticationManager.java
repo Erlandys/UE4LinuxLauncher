@@ -1,5 +1,6 @@
 package launcher.managers;
 
+import launcher.CaptchaWorkaroundForm;
 import launcher.LoginForm;
 import launcher.MainForm;
 import launcher.TwoFactorForm;
@@ -82,6 +83,7 @@ public class AuthenticationManager {
 	public void doLogin() {
 		_currentStep = 0;
 		_stepsCount = 10;
+		LoginForm.getInstance().clearProgress();
 		try {
 			_twoFactorMethod = null;
 			SessionManager.getInstance().getSession().clearSession();
@@ -128,20 +130,22 @@ public class AuthenticationManager {
 	}
 
 	private void retrieveCatpchaInformation(String data) {
+		String bda = SessionManager.getInstance().getSession().getBDA();
+		if (bda == null)
+			return;
 		Random rnd = new Random();
 		try {
-			String originalInput = Integer.toString((int) (System.currentTimeMillis() / 1000));
-			String encodedDate = Base64.getEncoder().encodeToString(originalInput.getBytes());
-			String fullJson = "[{\"key\":\"api_type\",\"value\":\"js\"},{\"key\":\"p\",\"value\":1},{\"key\":\"f\",\"value\":\"5a648a424aa43970d6c790f57524f04a\"},{\"key\":\"n\",\"value\":\"" + encodedDate + "\"},{\"key\":\"wh\",\"value\":\"d6d67e54091c945592c36c19645f166f|2250275f153ba3400a3b0e99319ef4e7\"},{\"value\":[\"DNT:1\",\"L:en-US\",\"D:24\",\"PR:1\",\"S:2560,1440\",\"AS:2560,1440\",\"TO:-120\",\"SS:true\",\"LS:true\",\"IDB:true\",\"B:false\",\"ODB:false\",\"CPUC:unknown\",\"PK:Linux x86_64\",\"CFP:-1869353425\",\"FR:false\",\"FOS:false\",\"FB:false\",\"JSF:Arial,Arial Narrow,Bitstream Vera Sans Mono,Courier New,MS Gothic,MS PGothic,Times New Roman\",\"P:\",\"T:0,false,false\",\"H:12\",\"SWF:false\"],\"key\":\"fe\"},{\"key\":\"cs\",\"value\":1},{\"key\":\"jsbd\",\"value\":\"{\\\"HL\\\":22,\\\"NCE\\\":true,\\\"DMTO\\\":1,\\\"DOTO\\\":1}\"}]";
-			String encodedJSON = Base64.getEncoder().encodeToString(fullJson.getBytes());
-			Request request = new Request(CAPTCHA).postRequest().assignInput("public_key", ARKOSELABS_PUBLIC_KEY);
-			request.assignInput("bda", encodedJSON);
+			Request request = new Request(CAPTCHA).postRequest();
+			request.assignInput("public_key", ARKOSELABS_PUBLIC_KEY);
+			request.assignInput("bda", bda);
 			request.assignInput("site", "https://epic-games-api.arkoselabs.com");
+			request.assignInput("userbrowser", SessionManager.getInstance().getSession().getUserBrowser());
 			request.assignInput("simulate_rate_limit", "0");
 			request.assignInput("simulated", "0");
 			request.assignInput("language", "en-US");
 			request.assignInput("rnd", rnd.nextDouble());
 			request.assignInput("data[blob]", data);
+			request.removeUserAgent();
 			if (!request.execute(200)) {
 				throw new RuntimeException("Error: #1003");
 			}
@@ -150,26 +154,6 @@ public class AuthenticationManager {
 				throw new RuntimeException("Error: #1004");
 			}
 			TOKEN = root.getString("token");
-			boolean containsSup = false;
-			for (String part : TOKEN.split("\\|")) {
-				if (part.equalsIgnoreCase("sup=1")) {
-					containsSup = true;
-					break;
-				}
-			}
-			if (!containsSup) {
-				StringBuilder result = new StringBuilder();
-				for (String part : TOKEN.split("\\|")) {
-					if (part.startsWith("at=")) {
-						result.append(part).append("|");
-						result.append("sup=1|");
-						result.append("rid=").append(rnd.nextInt(90) + 10).append("|");
-						continue;
-					}
-					result.append(part).append("|");
-				}
-				TOKEN = result.substring(0, result.length() - 1);
-			}
 		} catch (IOException e) {
 			throw new RuntimeException("Error: #1005");
 		}
@@ -218,6 +202,22 @@ public class AuthenticationManager {
 				if (request.getResponseCode() == 431) {
 					SessionManager.getInstance().getSession().setCookies(request.getCookies());
 					performTwoFactor(request.getContent());
+					throw new RuntimeException("Two factor authentication required.");
+				}
+				else {
+					System.out.println(request.getResponseCode());
+					System.out.println(request.getContent());
+					JSONObject object = new JSONObject(request.getContent());
+					if (object.has("message")) {
+						if (object.has("errorCode")) {
+							String errorCode = object.getString("errorCode");
+							if (errorCode.equals("errors.com.epicgames.accountportal.captcha_invalid")) {
+								CaptchaWorkaroundForm.getInstance().start();
+								throw new RuntimeException("Captcha data necessary to finish authentication.");
+							}
+						}
+						throw new RuntimeException(object.getString("message"));
+					}
 				}
 				throw new RuntimeException("Error: #1008");
 			}

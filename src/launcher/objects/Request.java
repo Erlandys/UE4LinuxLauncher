@@ -76,6 +76,8 @@ public class Request {
 
 	private String _receivedXSRF;
 
+	private boolean _addUserAgent;
+
 	public Request(String url) throws IOException {
 		_url = url;
 		_urlObject = new URL(url);
@@ -85,6 +87,7 @@ public class Request {
 	}
 
 	private void initialize() {
+		_addUserAgent = true;
 		_sentInputs = new LinkedList<>();
 		_sentHeaders = new LinkedList<>();
 		_sentCookies = new LinkedList<>();
@@ -148,7 +151,6 @@ public class Request {
 						try {
 							expireDate = (int) (new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z").parse(partParts[1]).getTime() / 1000);
 						} catch (ParseException e) {
-							e.printStackTrace();
 						}
 					}
 
@@ -161,6 +163,10 @@ public class Request {
 				_receivedHeaders.put(header.getKey(), header.getValue());
 			}
 		}
+	}
+
+	public void removeUserAgent() {
+		_addUserAgent = false;
 	}
 
 	private String readOutput(boolean output) {
@@ -192,7 +198,8 @@ public class Request {
 		byte[] postData = null;
 		_connection.setDoOutput(_readOutput);
 		_connection.setInstanceFollowRedirects(_followRedirects);
-		_sentHeaders.add(new AbstractMap.SimpleEntry<>("User-Agent", USER_AGENT));
+		if (_addUserAgent)
+			_sentHeaders.add(new AbstractMap.SimpleEntry<>("User-Agent", USER_AGENT));
 		_sentHeaders.add(new AbstractMap.SimpleEntry<>("Origin", "erlandys_ue4_marketplace"));
 		if (_requestType == ERequestType.POST) {
 			_connection.setDoInput(true);

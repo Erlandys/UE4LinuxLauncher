@@ -25,6 +25,7 @@ public class DatabaseManager {
 			prepareCategoriesTable();
 			prepareCategoriesItemsTable();
 			prepareImagesTable();
+			prepareGlobalVariablesTable();
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -145,6 +146,17 @@ public class DatabaseManager {
 				"  \"width\" integer(10) NOT NULL,\n" +
 				"  \"height\" integer(10) NOT NULL,\n" +
 				"  CONSTRAINT \"images_item_id_foreign_key\" FOREIGN KEY (\"item_id\") REFERENCES \"items\" (\"id\") ON DELETE CASCADE ON UPDATE NO ACTION\n" +
+				");");
+	}
+
+	private void prepareGlobalVariablesTable() throws SQLException {
+		if (tableExists("global_variables"))
+			return;
+		Statement statement = _connection.createStatement();
+		statement.executeUpdate("CREATE TABLE \"global_variables\" (\n" +
+				"  \"name\" TEXT NOT NULL,\n" +
+				"  \"value\" TEXT,\n" +
+				"  PRIMARY KEY (\"name\")\n" +
 				");");
 	}
 

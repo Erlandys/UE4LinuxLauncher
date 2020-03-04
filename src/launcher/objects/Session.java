@@ -1,16 +1,76 @@
 package launcher.objects;
 
 import launcher.managers.DatabaseManager;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.sql.*;
 import java.util.*;
 
 public class Session {
 	private String _xsrf;
+	private JSONArray _bda;
+	private int _timeObjectIndex;
+	private String _userBrowser;
 	private Map<String, AbstractMap.SimpleEntry<String, AbstractMap.SimpleEntry<String, Integer>>> _cookies;
 
 	public Session() {
 		_cookies = new HashMap<>();
+		_bda = null;
+		_timeObjectIndex = -1;
+	}
+
+	public String getBDA() {
+		if (_bda == null)
+			return null;
+		if (_timeObjectIndex == -1)
+			return null;
+		JSONObject obj = _bda.optJSONObject(_timeObjectIndex);
+		if (obj == null)
+			return null;
+		obj.remove("value");
+		obj.put("value", Base64.getEncoder().encodeToString(Integer.toString((int) (System.currentTimeMillis() / 1000)).getBytes()));
+		return Base64.getEncoder().encodeToString(_bda.toString().getBytes());
+	}
+
+	public void setBDA(String bda) {
+		setBDA(bda, true, true);
+	}
+
+	private void setBDA(String bda, boolean save, boolean isBase64) {
+		_timeObjectIndex = -1;
+		String decodedJSON;
+		if (isBase64) {
+			byte[] decoded = Base64.getDecoder().decode(bda);
+			if (decoded.length < 1)
+				return;
+			decodedJSON = new String(decoded);
+		}
+		else
+			decodedJSON = bda;
+		_bda = new JSONArray(decodedJSON);
+		for (int i = 0; i < _bda.length(); i++) {
+			JSONObject obj = _bda.optJSONObject(i);
+			if (obj == null)
+				continue;
+			if (!obj.has("key"))
+				continue;
+			String key = obj.getString("key");
+			if (!key.equalsIgnoreCase("n"))
+				continue;
+			_timeObjectIndex = i;
+			break;
+		}
+		if (_timeObjectIndex != -1 && save)
+			save();
+	}
+
+	public String getUserBrowser() {
+		return _userBrowser;
+	}
+
+	public void setUserBrowser(String userBrowser) {
+		_userBrowser = userBrowser;
 	}
 
 	public String getXSRF() {
@@ -57,6 +117,7 @@ public class Session {
 		try {
 			Connection connection = DatabaseManager.getInstance().getConnection();
 			saveCookies(connection);
+			saveGlobalVariables(connection);
 		} catch (SQLException se) {
 			se.printStackTrace();
 		}
@@ -78,10 +139,25 @@ public class Session {
 		}
 	}
 
+	private void saveGlobalVariables(Connection connection) throws SQLException {
+		PreparedStatement statement = connection.prepareStatement("REPLACE INTO global_variables(name, value) VALUES(?, ?)");
+		{
+			statement.setString(1, "bda");
+			statement.setString(2, _bda.toString());
+			statement.executeUpdate();
+		}
+		{
+			statement.setString(1, "user_browser");
+			statement.setString(2, _userBrowser);
+			statement.executeUpdate();
+		}
+	}
+
 	public boolean load() {
 		try {
 			Connection connection = DatabaseManager.getInstance().getConnection();
 			loadCookies(connection);
+			loadGlobalVariables(connection);
 			return true;
 		} catch (SQLException se) {
 			se.printStackTrace();
@@ -101,6 +177,19 @@ public class Session {
 			while (rset.next()) {
 				_cookies.put(rset.getString("name").toLowerCase(), new AbstractMap.SimpleEntry<>(rset.getString("name"), new AbstractMap.SimpleEntry<>(rset.getString("value"), rset.getInt("expire_at"))));
 			}
+		}
+	}
+
+	private void loadGlobalVariables(Connection connection) throws SQLException {
+		Statement statement = connection.createStatement();
+		ResultSet rset = statement.executeQuery("SELECT * FROM global_variables");
+		while (rset.next()) {
+			String name = rset.getString("name");
+			String value = rset.getString("value");
+			if (name.equals("bda"))
+				setBDA(value, false, false);
+			else if (name.equals("user_browser"))
+				setUserBrowser(value);
 		}
 	}
 

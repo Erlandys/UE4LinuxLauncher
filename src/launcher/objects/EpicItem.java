@@ -528,7 +528,7 @@ public class EpicItem {
 		int filesCount = fileManifestList.length();
 		double chunkPercent = 100.0 / filesCount;
 		double wholePercent = 30.0 / filesCount;
-		String projectPath = "/home/erlandas/Documents/UELauncher/extracted_data/" + appName + "/";//SessionManager.getInstance().getUser().getProjects().get(SessionManager.getInstance().getUser().getCurrentProject());
+		String projectPath = SessionManager.getInstance().getUser().getProjects().get(SessionManager.getInstance().getUser().getCurrentProject());
 		File f = new File(projectPath);
 		if (!f.exists()) {
 			f.mkdirs();
