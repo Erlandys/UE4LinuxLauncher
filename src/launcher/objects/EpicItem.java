@@ -1,13 +1,11 @@
 package launcher.objects;
 
 import launcher.DownloadForm;
-import launcher.Main;
 import launcher.managers.DatabaseManager;
 import launcher.managers.MarketplaceManager;
 import launcher.managers.SessionManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import sun.awt.image.ImageWatched;
 
 import java.io.*;
 import java.net.URL;
@@ -22,9 +20,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 

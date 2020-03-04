@@ -145,6 +145,9 @@ public class AuthenticationManager {
 			request.assignInput("language", "en-US");
 			request.assignInput("rnd", rnd.nextDouble());
 			request.assignInput("data[blob]", data);
+			request.assignHeader("Origin", "https://epic-games-api.arkoselabs.com");
+			request.assignHeader("User-Agent", SessionManager.getInstance().getSession().getUserBrowser());
+			request.assignHeader("Host", "epic-games-api.arkoselabs.com");
 			request.removeUserAgent();
 			if (!request.execute(200)) {
 				throw new RuntimeException("Error: #1003");
@@ -205,8 +208,6 @@ public class AuthenticationManager {
 					throw new RuntimeException("Two factor authentication required.");
 				}
 				else {
-					System.out.println(request.getResponseCode());
-					System.out.println(request.getContent());
 					JSONObject object = new JSONObject(request.getContent());
 					if (object.has("message")) {
 						if (object.has("errorCode")) {
@@ -272,7 +273,6 @@ public class AuthenticationManager {
 			if (!root.has("access_token")) {
 				throw new RuntimeException("Error: #1014");
 			}
-			System.out.println(root);
 			SessionManager.getInstance().getUser().setOAuthAccessToken(root.getString("access_token"));
 		} catch (IOException e) {
 			throw new RuntimeException("Error: #1015");
@@ -325,7 +325,6 @@ public class AuthenticationManager {
 				System.out.println(request);
 				throw new RuntimeException("Error: #1020");
 			}
-			System.out.println(root.getString("access_token"));
 			SessionManager.getInstance().getUser().setOAuthAccessToken(root.getString("access_token"));
 			SessionManager.getInstance().getUser().setOAuthAccessTokenExpirationDate(root.getString("expires_at"));
 			SessionManager.getInstance().getUser().setOAuthRefreshToken(root.getString("refresh_token"));
@@ -361,7 +360,6 @@ public class AuthenticationManager {
 				throw new RuntimeException("Error: #1025");
 			}
 			sid = root.getString("sid");
-			System.out.println(request);
 			SessionManager.getInstance().getSession().setCookies(request.getCookies());
 		} catch (IOException e) {
 			throw new RuntimeException("Error: #1026");
@@ -381,7 +379,6 @@ public class AuthenticationManager {
 			if (!request.execute(204)) {
 				throw new RuntimeException("Error: #1027");
 			}
-			System.out.println(request);
 			SessionManager.getInstance().getSession().setCookies(request.getCookies());
 		} catch (IOException e) {
 			throw new RuntimeException("Error: #1028");
@@ -401,7 +398,6 @@ public class AuthenticationManager {
 			if (!request.execute(200)) {
 				throw new RuntimeException("Error: #1029");
 			}
-			System.out.println(request);
 			SessionManager.getInstance().getSession().setCookies(request.getCookies());
 			JSONObject root = new JSONObject(request.getContent());
 			if (!root.has("isLoggedIn")) {
@@ -454,7 +450,6 @@ public class AuthenticationManager {
 				TwoFactorForm.getInstance().showError("Invalid");
 				return;
 			}
-			System.out.println(request);
 			SessionManager.getInstance().getSession().setCookies(request.getCookies());
 		} catch (Exception e) {
 			LoginForm.getInstance().loginError("Error: #1038");

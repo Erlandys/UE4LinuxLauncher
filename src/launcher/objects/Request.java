@@ -33,9 +33,14 @@ public class Request {
 
 		@Override
 		public String toString() {
+			String value = _value.toString();
+			if (_name.equalsIgnoreCase("email"))
+				value = "******";
+			else if (_name.equalsIgnoreCase("password"))
+				value = "******";
 			return "Input{" +
 					"_name='" + _name + '\'' +
-					", _value=" + _value +
+					", _value=" + value +
 					'}';
 		}
 	}
@@ -198,9 +203,10 @@ public class Request {
 		byte[] postData = null;
 		_connection.setDoOutput(_readOutput);
 		_connection.setInstanceFollowRedirects(_followRedirects);
-		if (_addUserAgent)
+		if (_addUserAgent) {
 			_sentHeaders.add(new AbstractMap.SimpleEntry<>("User-Agent", USER_AGENT));
-		_sentHeaders.add(new AbstractMap.SimpleEntry<>("Origin", "erlandys_ue4_marketplace"));
+			_sentHeaders.add(new AbstractMap.SimpleEntry<>("Origin", "erlandys_ue4_marketplace"));
+		}
 		if (_requestType == ERequestType.POST) {
 			_connection.setDoInput(true);
 			postData = getInputs().getBytes();
