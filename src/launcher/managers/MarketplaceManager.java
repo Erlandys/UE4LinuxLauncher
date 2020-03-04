@@ -148,6 +148,7 @@ public class MarketplaceManager {
 		EpicItem item = getItem(catalogItemId);
 		if (item != null) {
 			item.removeFromDatabase();
+			SessionManager.getInstance().getUser().removeOwnedItem(item);
 			_marketplaceItems.remove(catalogItemId);
 		}
 

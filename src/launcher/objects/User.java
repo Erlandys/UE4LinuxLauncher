@@ -225,6 +225,10 @@ public class User {
 		return _ownedItems;
 	}
 
+	public void removeOwnedItem(EpicItem item) {
+		_ownedItems.remove(item);
+	}
+
 	public String getCurrentProject() {
 		return _currentProject;
 	}
