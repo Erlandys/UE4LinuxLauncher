@@ -19,6 +19,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
@@ -241,8 +242,7 @@ public class EpicItem {
 			PreparedStatement statement = connection.prepareStatement("DELETE FROM items WHERE catalog_item_id = ?");
 			statement.setString(1, _catalogItemId);
 			statement.executeUpdate();
-		}
-		catch (SQLException se) {
+		} catch (SQLException se) {
 			se.printStackTrace();
 		}
 	}
@@ -272,8 +272,7 @@ public class EpicItem {
 			ResultSet rset = statement.getGeneratedKeys();
 			if (rset.next())
 				_id = rset.getInt(1);
-		}
-		catch (SQLException se) {
+		} catch (SQLException se) {
 			se.printStackTrace();
 		}
 		for (EpicImage image : _images) {
@@ -304,8 +303,7 @@ public class EpicItem {
 			statement.setInt(4, headerId);
 			statement.setInt(5, _id);
 			statement.executeUpdate();
-		}
-		catch (SQLException se) {
+		} catch (SQLException se) {
 			se.printStackTrace();
 		}
 
@@ -352,8 +350,7 @@ public class EpicItem {
 			DownloadForm.getInstance().increase2Progress(5);
 			getItemManfiest(distribution, path, signature);
 			DownloadForm.getInstance().finishDownload(true);
-		}
-		catch (IOException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
@@ -373,7 +370,7 @@ public class EpicItem {
 				DownloadForm.getInstance().setMainInfoText("Failed to parse item manifest...");
 				return;
 			}
-			if (!root.has("ChunkHashList") || !root.has("DataGroupList")) {
+			if (!root.has("ChunkHashList") || !root.has("DataGroupList") || !root.has("ChunkFilesizeList")) {
 				System.out.println(request);
 				DownloadForm.getInstance().setMainInfoText("Failed to parse item manifest...");
 				return;
@@ -383,25 +380,33 @@ public class EpicItem {
 				DownloadForm.getInstance().setMainInfoText("Failed to parse item manifest...");
 				return;
 			}
+			long totalSize = 0;
+			JSONObject filesizeList = root.getJSONObject("ChunkFilesizeList");
+			for (Object entry : filesizeList.toMap().values()) {
+				if (!(entry instanceof String))
+					continue;
+				String value = (String) entry;
+				totalSize += Integer.parseInt(reverseHexEncoding(value), 16);
+			}
 			DownloadForm.getInstance().increase2Progress(5);
 			String appName = root.getString("AppNameString");
-			downloadItemChunks(appName, distribution, path, root.getJSONObject("ChunkHashList"), root.getJSONObject("DataGroupList"));
-			extractFiles(appName, root.getJSONArray("FileManifestList"));
+			downloadItemChunks(appName, distribution, path, root.getJSONObject("ChunkHashList"), root.getJSONObject("DataGroupList"), totalSize);
+			decompressChunks(appName);
+			extractChunks(appName, root.getJSONArray("FileManifestList"));
 			deleteDirectory(new File("." + appName));
-;		}
-		catch (IOException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 
-	private void downloadItemChunks(String appName, String distribution, String path, JSONObject chunkHashList, JSONObject dataGroupList) {
+	private void downloadItemChunks(String appName, String distribution, String path, JSONObject chunkHashList, JSONObject dataGroupList, long totalSize) {
 		DownloadForm.getInstance().clear1Progress();
 		String chunkBaseURL = distribution + path.substring(0, path.lastIndexOf("/")) + "/ChunksV3/";
-		AtomicInteger downloadedChunks = new AtomicInteger(0);
+		AtomicLong downloadedSize = new AtomicLong(0);
 		int chunksCount = chunkHashList.length();
 
 		DownloadForm.getInstance().setMainProgressText("Downloading item chunks...");
-		DownloadForm.getInstance().setMinorProgressText(downloadedChunks + " of " + chunksCount);
+		DownloadForm.getInstance().setMinorProgressText(toBytes(downloadedSize.get()) + " of " + toBytes(totalSize));
 
 		List<AbstractMap.SimpleEntry<String, String>> data = new LinkedList<>();
 
@@ -412,8 +417,7 @@ public class EpicItem {
 
 			String hash = reverseHexEncoding(result);
 			String group = String.format("%02d", Integer.parseInt(dataGroupList.getString(name)));
-			String fileName = name + ".chunk";
-			data.add(new AbstractMap.SimpleEntry<>(fileName, chunkBaseURL + group + "/" + hash + "_" + name + ".chunk"));
+			data.add(new AbstractMap.SimpleEntry<>(name, chunkBaseURL + group + "/" + hash + "_" + name + ".chunk"));
 		}
 
 		File directory = new File("." + appName + "/chunks/");
@@ -426,24 +430,25 @@ public class EpicItem {
 		DownloadForm.getInstance().setMainProgressText("Downloading chunks");
 		for (AbstractMap.SimpleEntry<String, String> entry : data) {
 			_service.execute(() -> {
-				File file = new File("." + appName + "/chunks/" + entry.getKey());
+				File file = new File("." + appName + "/chunks/" + entry.getKey() + ".chunk");
 				if (file.exists())
 					//noinspection ResultOfMethodCallIgnored
 					file.delete();
 				try (BufferedInputStream in = new BufferedInputStream(new URL(entry.getValue()).openStream());
-					 FileOutputStream fout = new FileOutputStream("." + appName + "/chunks/" + entry.getKey())) {
+					 FileOutputStream fout = new FileOutputStream("." + appName + "/chunks/" + entry.getKey() + ".chunk")) {
 					final byte[] content = new byte[1024];
+					long totalCount = 0;
 					int count;
 					while ((count = in.read(content, 0, 1024)) != -1) {
 						fout.write(content, 0, count);
+						totalCount += count;
 					}
 					double chunkPercent = 100.0 / chunksCount;
 					double wholePercent = 30.0 / chunksCount;
-					DownloadForm.getInstance().setMinorProgressText(downloadedChunks.incrementAndGet() + " of " + chunksCount);
+					DownloadForm.getInstance().setMinorProgressText(toBytes(downloadedSize.addAndGet(totalCount)) + " of " + toBytes(totalSize));
 					DownloadForm.getInstance().increase1Progress(chunkPercent);
 					DownloadForm.getInstance().increase2Progress(wholePercent);
-				}
-				catch (IOException e) {
+				} catch (IOException e) {
 					e.printStackTrace();
 				}
 			});
@@ -451,11 +456,6 @@ public class EpicItem {
 		_service.shutdown();
 		while (!_service.isTerminated()) {
 		}
-	}
-
-	private void extractFiles(String appName, JSONArray fileManifestList) {
-		decompressChunks(appName);
-		extractChunks(appName, fileManifestList);
 	}
 
 	private void decompressChunks(String appName) {
@@ -498,15 +498,16 @@ public class EpicItem {
 					int headerSize = headerData[8];
 					boolean isCompressed = headerData[40] == 1;
 
-					byte[] fileData = Arrays.copyOfRange(data, headerSize, data.length - headerSize);
+					byte[] fileData = Arrays.copyOfRange(data, headerSize, data.length);
 
 					try (FileOutputStream fos = new FileOutputStream("." + appName + "/reworked_chunks/" + fileName)) {
-						fos.write(isCompressed ? decompress(fileData) : fileData);
+						byte[] resultData = isCompressed ? decompress(fileData) : fileData;
+						fos.write(resultData);
 					}
 					DownloadForm.getInstance().setMinorProgressText(chunksCount.incrementAndGet() + " of " + filesCount);
 					DownloadForm.getInstance().increase1Progress(chunkPercent);
 					DownloadForm.getInstance().increase2Progress(wholePercent);
-//					file.deleteOnExit();
+					file.deleteOnExit();
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -536,7 +537,6 @@ public class EpicItem {
 			JSONObject manifest = fileManifestList.getJSONObject(i);
 			if (!manifest.has("Filename") || !manifest.has("FileChunkParts"))
 				continue;
-			int fileSize = 0;
 			String fullPath = projectPath + manifest.getString("Filename");
 			File file = new File(fullPath);
 			if (!file.exists())
@@ -578,8 +578,7 @@ public class EpicItem {
 			for (File f : files) {
 				if (f.isDirectory()) {
 					deleteDirectory(f);
-				}
-				else {
+				} else {
 					//noinspection ResultOfMethodCallIgnored
 					f.delete();
 				}
@@ -605,13 +604,12 @@ public class EpicItem {
 				decompressedDataLength += decompressedLength;
 				if (result == null) {
 					result = decompressed;
-				}
-				else {
+				} else {
 					byte[] currentData = result;
 					int currentLength = decompressedDataLength - decompressedLength;
 					result = new byte[decompressedDataLength];
 					System.arraycopy(currentData, 0, result, 0, currentLength);
-					System.arraycopy(decompressed, 0, result, currentLength - 1, decompressedLength);
+					System.arraycopy(decompressed, 0, result, currentLength, decompressedLength);
 				}
 			}
 		} catch (DataFormatException dfe) {
@@ -634,7 +632,24 @@ public class EpicItem {
 		return result;
 	}
 
+	private static String toBytes(long size) {
+		String result;
+		if (size < 1024)
+			result = Long.toString(size);
+		else if (size < 1048576)
+			result = String.format("%.2f", size / 1024.0) + "k";
+		else if (size < 1073741824)
+			result = String.format("%.2f", size / 1048576.0) + "M";
+		else if (size < 1099511627776L)
+			result = String.format("%.2f", size / 1073741824.0) + "G";
+		else
+			result = String.format("%.2f", size / 1099511627776.0) + "T";
+		result += "B";
+		return result;
+	}
+
 	static final String[] HEX_CHARS = new String[]{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F"};
+
 	private static String byteToHex(int b) {
 		return HEX_CHARS[(b >> 4) & 0x0f] + HEX_CHARS[b & 0x0f];
 	}
