@@ -468,7 +468,6 @@ public class MainForm extends JFrame {
 				data.append("<td>");
 				String asset = HtmlUtils.getAssetDiv();
 				asset = asset.replaceAll("%category%", _currentCategory.getName());
-				asset = asset.replaceAll("%id%", item.getCatalogItemId());
 				String name = HtmlUtils.findText(item.getName(), 195, HtmlUtils.FONT_TITLE);
 				asset = asset.replaceAll("%title%", name);
 				asset = asset.replaceAll("%image%", item.getThumbnail().getUrl());
