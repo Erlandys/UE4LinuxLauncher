@@ -106,7 +106,11 @@ public class EngineManager {
 				String projectPath = line.split("RecentlyOpenedProjectFiles=")[1];
 				String projectName = projectPath.substring(projectPath.lastIndexOf('/') + 1).split("\\.")[0];
 				projectPath = projectPath.substring(0, projectPath.lastIndexOf('/') + 1);
-				user.getProjects().put(projectName, projectPath);
+
+				// check if project still exists before adding it to the list
+				if(new File(projectPath).exists()) {
+					user.getProjects().put(projectName, projectPath);
+				}
 			}
 			MainForm.getInstance().updateProjectsList();
 		}
