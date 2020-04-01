@@ -26,6 +26,7 @@ public class DatabaseManager {
 			prepareCategoriesItemsTable();
 			prepareImagesTable();
 			prepareGlobalVariablesTable();
+			prepateItemDownloadsTable();
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -165,6 +166,14 @@ public class DatabaseManager {
 		statement.setString(1, tableName);
 		ResultSet rset = statement.executeQuery();
 		return rset.next();
+	}
+
+
+	private void prepateItemDownloadsTable() throws SQLException {
+		if (tableExists("item_downloads"))
+			return;
+		Statement statement = _connection.createStatement();
+		statement.executeUpdate("CREATE TABLE 'item_downloads' ('id' INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, 'item_id' TEXT, 'catalog_item_id' TEXT, 'projectName' TEXT, 'download_time' INTEGER);");
 	}
 
 	public static DatabaseManager getInstance() {

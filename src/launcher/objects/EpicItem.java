@@ -33,15 +33,16 @@ public class EpicItem {
 	private String _description;
 	private String _longDescription;
 	private String _technicalDetails;
-	private ArrayList<EpicCategory> _categories;
-	private ArrayList<EpicImage> _images;
+	private ArrayList<EpicCategory> _categories = new ArrayList<>();
+	private ArrayList<EpicImage> _images = new ArrayList<>();
+	private HashMap<String, ArrayList<Long>> _downloads = new HashMap<>();
 	private String _urlPart;
 	private double _price;
 	private double _discountPrice;
 	private int _discountPercent;
 	private String _sellerName;
-	private List<EpicItemReleaseInfo> _releases;
-	private HashMap<Double, String> _compatibility;
+	private List<EpicItemReleaseInfo> _releases = new LinkedList<>();
+	private HashMap<Double, String> _compatibility = new HashMap<>();
 	private EpicImage _featured;
 	private EpicImage _thumbnail;
 	private EpicImage _learnThumbnail;
@@ -49,19 +50,7 @@ public class EpicItem {
 
 	private boolean _isOwned;
 
-	private EpicItem() {
-		_releases = new LinkedList<>();
-		_compatibility = new HashMap<>();
-		_categories = new ArrayList<>();
-		_images = new ArrayList<>();
-	}
-
 	public EpicItem(JSONObject object) {
-		_releases = new LinkedList<>();
-		_compatibility = new HashMap<>();
-		_categories = new ArrayList<>();
-		_images = new ArrayList<>();
-
 		_itemId = object.has("id") ? object.getString("id") : "";
 		_catalogItemId = object.has("catalogItemId") ? object.getString("catalogItemId") : "";
 		_name = object.has("title") ? object.getString("title") : "Unknown";
@@ -166,6 +155,21 @@ public class EpicItem {
 				_compatibility.put(compatibility, appName);
 			}
 		}
+
+		Connection connection = DatabaseManager.getInstance().getConnection();
+
+		PreparedStatement statement = connection.prepareStatement("SELECT * FROM item_downloads WHERE item_id = ? AND catalog_item_id = ?");
+		statement.setString(1, getItemId());
+		statement.setString(2, getCatalogItemId());
+		ResultSet rsetDownloads = statement.executeQuery();
+		while (rsetDownloads.next()) {
+			String projectName = rsetDownloads.getString("projectName");
+			if(!_downloads.containsKey(projectName)) {
+				_downloads.put(projectName, new ArrayList<>());
+			}
+
+			_downloads.get(projectName).add((long) rsetDownloads.getInt("download_time"));
+		}
 	}
 
 	public int getId() {
@@ -226,6 +230,27 @@ public class EpicItem {
 
 	public String getAppNameByRev(double version) {
 		return _compatibility.get(version);
+	}
+
+	public HashMap<String, ArrayList<Long>> getDownloads(){
+		return _downloads;
+	}
+
+	public long getLastDownloadTime(String projectName){
+		long lastDownload = -1;
+
+		// return the last download time for any project when the projectName is empty
+		if(projectName.length() == 0){
+			for(String pName : _downloads.keySet())
+			lastDownload = Math.max(lastDownload, getLastDownloadTime(pName));
+		}
+		// return the last download time for the requested project (if it exists)
+		else if(_downloads.containsKey(projectName)) {
+			for (long time : _downloads.get(projectName)) {
+				lastDownload = Math.max(lastDownload, time);
+			}
+		}
+		return lastDownload;
 	}
 
 	public boolean isCompatible(double version) {
@@ -349,7 +374,7 @@ public class EpicItem {
 			String signature = manifest.getString("signature");
 			DownloadForm.getInstance().increase2Progress(5);
 			getItemManfiest(distribution, path, signature);
-			DownloadForm.getInstance().finishDownload(true);
+			DownloadForm.getInstance().finishDownload(true, true);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

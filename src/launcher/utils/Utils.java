@@ -1,7 +1,10 @@
 package launcher.utils;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Random;
 
@@ -25,5 +28,31 @@ public class Utils {
 	private static String getTime() {
 		Date date = new Date(System.currentTimeMillis());
 		return HMS_FORMATTER.format(date);
+	}
+
+	// cached resource loader, used to parse HTML files
+	static HashMap<String, String> resourceCache = new HashMap<>();
+	public static String getResource(String path){
+
+		if(resourceCache.containsKey(path))
+			return resourceCache.get(path);
+
+		String data = "";
+		File file = new File(Utils.class.getClassLoader().getResource(path).getFile());
+
+		if(file.exists()){
+			try {
+				for(String line : Files.readAllLines(file.toPath()))
+					data+=line;
+
+			} catch (Exception ex){
+				System.out.println("failed to load html resource");
+			}
+
+			resourceCache.put(path, data);
+		}
+
+		return data;
+
 	}
 }
