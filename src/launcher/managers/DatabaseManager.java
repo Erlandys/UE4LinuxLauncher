@@ -67,9 +67,19 @@ public class DatabaseManager {
 				");");
 	}
 
+
+
+
 	private void prepareItemsTable() throws SQLException {
-		if (tableExists("items"))
+		if (tableExists("items")) {
+			// check if field exists,
+			if(!fieldExists("items", "totalSize")){
+				Statement statement = _connection.createStatement();
+				statement.executeUpdate("ALTER TABLE items ADD COLUMN totalSize INTEGER");
+			}
 			return;
+		}
+
 		Statement statement = _connection.createStatement();
 		statement.executeUpdate("CREATE TABLE \"items\" (\n" +
 				"  \"id\" integer NOT NULL PRIMARY KEY AUTOINCREMENT,\n" +
@@ -91,6 +101,7 @@ public class DatabaseManager {
 				"  \"learn_thumbnail_image\" integer(10),\n" +
 				"  \"header_image\" integer(10),\n" +
 				"  \"asset_id\" TEXT\n" +
+				"  \"totalSize\" integer\n" +
 				");");
 	}
 
@@ -164,6 +175,14 @@ public class DatabaseManager {
 	private boolean tableExists(String tableName) throws SQLException {
 		PreparedStatement statement = _connection.prepareStatement("SELECT `name` FROM `sqlite_master` WHERE `type` = 'table' AND `name` = ?");
 		statement.setString(1, tableName);
+		ResultSet rset = statement.executeQuery();
+		return rset.next();
+	}
+
+	private boolean fieldExists(String tableName, String fieldName) throws SQLException {
+		PreparedStatement statement = _connection.prepareStatement("SELECT * FROM pragma_table_info(?) WHERE name = ?");
+		statement.setString(1, tableName);
+		statement.setString(2, fieldName);
 		ResultSet rset = statement.executeQuery();
 		return rset.next();
 	}

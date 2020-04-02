@@ -48,6 +48,8 @@ public class EpicItem {
 	private EpicImage _learnThumbnail;
 	private EpicImage _headerImage;
 
+	private EpicItemMeta _metaData; //contains additional item informations, such as images/manifest
+
 	private boolean _isOwned;
 
 	public EpicItem(JSONObject object) {
@@ -272,11 +274,28 @@ public class EpicItem {
 		}
 	}
 
+	public int getTotalSize(){
+		int totalSize = 0;
+		if(_metaData == null){
+			try {
+				_metaData = new EpicItemMeta(this, getLatestVersion());
+			} catch(EpicItemException ex){
+				System.out.println("couldnt fetch item meta for database update");
+			}
+		}
+
+		if(_metaData != null) {
+			totalSize = (int) _metaData.getTotalSize();
+		}
+
+		return totalSize;
+	}
+
 	public synchronized void save() {
 		LOCK.lock();
 		try {
 			Connection connection = DatabaseManager.getInstance().getConnection();
-			PreparedStatement statement = connection.prepareStatement("INSERT INTO items(item_id, catalog_item_id, name, description, long_description, technical_details, url_part, price, discounted_price, discount_percent, seller_name, is_owned, featured_image, thumbnail_image, learn_thumbnail_image, header_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+			PreparedStatement statement = connection.prepareStatement("INSERT INTO items(item_id, catalog_item_id, name, description, long_description, technical_details, url_part, price, discounted_price, discount_percent, seller_name, is_owned, featured_image, thumbnail_image, learn_thumbnail_image, header_image, totalSize) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 			statement.setString(1, _itemId);
 			statement.setString(2, _catalogItemId);
 			statement.setString(3, _name);
@@ -293,6 +312,7 @@ public class EpicItem {
 			statement.setInt(14, 0);
 			statement.setInt(15, 0);
 			statement.setInt(16, 0);
+			statement.setInt(17, getTotalSize());
 			statement.executeUpdate();
 			ResultSet rset = statement.getGeneratedKeys();
 			if (rset.next())
@@ -338,114 +358,76 @@ public class EpicItem {
 		LOCK.unlock();
 	}
 
+	static class EpicItemException extends Exception {
+		EpicItemException(String errorMessage) {
+			super(errorMessage);
+		}
+	}
+
+	private String getLatestVersion(){
+		String unrealVersion = "4.0";
+
+		if(_compatibility.containsKey(SessionManager.getInstance().getUser().getUnrealEngineVersion())){
+			unrealVersion = _compatibility.get(SessionManager.getInstance().getUser().getUnrealEngineVersion());
+		}
+		else {
+			//fallback to the latest version
+			double versionNumeric = 4.0;
+			for(Map.Entry<Double, String> entry : _compatibility.entrySet()){
+				if(entry.getKey() > versionNumeric) {
+					versionNumeric = entry.getKey();
+					unrealVersion = entry.getValue();
+				}
+			}
+		}
+
+		return unrealVersion;
+	}
+
+
 	public void startDownloading() {
+		DownloadForm.getInstance().setMainInfoText("Downloading [" + _name + "]");
+		DownloadForm.getInstance().setMainProgressText("Downloading item info...");
+
 		try {
-			DownloadForm.getInstance().setMainInfoText("Downloading [" + _name + "]");
-			DownloadForm.getInstance().setMainProgressText("Downloading item info...");
-			Request request = new Request("https://launcher-public-service-prod06.ol.epicgames.com/launcher/api/public/assets/Windows/" + _catalogItemId + "/" + _compatibility.get(SessionManager.getInstance().getUser().getUnrealEngineVersion()));
-			request.assignParameter("label", "Live");
-			request.assignCookies(SessionManager.getInstance().getSession());
-			request.assignBearer();
-			if (!request.execute(200)) {
-				System.out.println(request);
-				DownloadForm.getInstance().setMainInfoText("Failed to download item info...");
-				return;
-			}
-			JSONObject root = new JSONObject(request.getContent());
-			if (!root.has("items")) {
-				System.out.println(request);
-				DownloadForm.getInstance().setMainInfoText("Failed to download item info...");
-				return;
-			}
-			JSONObject items = root.getJSONObject("items");
-			if (!items.has("MANIFEST")) {
-				System.out.println(request);
-				DownloadForm.getInstance().setMainInfoText("Failed to download item info...");
-				return;
-			}
-			JSONObject manifest = items.getJSONObject("MANIFEST");
-			if (!manifest.has("distribution") || !manifest.has("path") || !manifest.has("signature")) {
-				System.out.println(request);
-				DownloadForm.getInstance().setMainInfoText("Failed to download item info...");
-				return;
-			}
-			String distribution = manifest.getString("distribution");
-			String path = manifest.getString("path");
-			String signature = manifest.getString("signature");
-			DownloadForm.getInstance().increase2Progress(5);
-			getItemManfiest(distribution, path, signature);
+			EpicItemMeta metaData = new EpicItemMeta(this, getLatestVersion());
+			downloadItem(metaData);
 			DownloadForm.getInstance().finishDownload(true, true);
-		} catch (IOException e) {
-			e.printStackTrace();
+		} catch(EpicItemException ex){
+			DownloadForm.getInstance().setMainInfoText(ex.getMessage());
 		}
 	}
 
-	private void getItemManfiest(String distribution, String path, String signature) {
-		try {
-			DownloadForm.getInstance().setMainProgressText("Downloading item manifest...");
-			Request request = new Request(distribution + path + "?" + signature);
-			if (!request.execute(200)) {
-				System.out.println(request);
-				DownloadForm.getInstance().setMainInfoText("Failed to download item manifest...");
-				return;
-			}
-			JSONObject root = new JSONObject(request.getContent());
-			if (!root.has("AppNameString")) {
-				System.out.println(request);
-				DownloadForm.getInstance().setMainInfoText("Failed to parse item manifest...");
-				return;
-			}
-			if (!root.has("ChunkHashList") || !root.has("DataGroupList") || !root.has("ChunkFilesizeList")) {
-				System.out.println(request);
-				DownloadForm.getInstance().setMainInfoText("Failed to parse item manifest...");
-				return;
-			}
-			if (!root.has("FileManifestList")) {
-				System.out.println(request);
-				DownloadForm.getInstance().setMainInfoText("Failed to parse item manifest...");
-				return;
-			}
-			long totalSize = 0;
-			JSONObject filesizeList = root.getJSONObject("ChunkFilesizeList");
-			for (Object entry : filesizeList.toMap().values()) {
-				if (!(entry instanceof String))
-					continue;
-				String value = (String) entry;
-				totalSize += Integer.parseInt(reverseHexEncoding(value), 16);
-			}
-			DownloadForm.getInstance().increase2Progress(5);
-			String appName = root.getString("AppNameString");
-			downloadItemChunks(appName, distribution, path, root.getJSONObject("ChunkHashList"), root.getJSONObject("DataGroupList"), totalSize);
-			decompressChunks(appName);
-			extractChunks(appName, root.getJSONArray("FileManifestList"));
-			deleteDirectory(new File("." + appName));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+
+	private void downloadItem(EpicItemMeta metaData) {
+		downloadItemChunks(metaData);
+		decompressChunks(metaData);
+		extractChunks(metaData);
+		deleteDirectory(new File("." + metaData.get_manifest_appName()));
 	}
 
-	private void downloadItemChunks(String appName, String distribution, String path, JSONObject chunkHashList, JSONObject dataGroupList, long totalSize) {
+	private void downloadItemChunks(EpicItemMeta metaData) {
 		DownloadForm.getInstance().clear1Progress();
-		String chunkBaseURL = distribution + path.substring(0, path.lastIndexOf("/")) + "/ChunksV3/";
+		String chunkBaseURL = metaData.getDistribution() + metaData.getPath().substring(0, metaData.getPath().lastIndexOf("/")) + "/ChunksV3/";
 		AtomicLong downloadedSize = new AtomicLong(0);
-		int chunksCount = chunkHashList.length();
+		int chunksCount = metaData.getManifest_root().getJSONObject("ChunkHashList").length();
 
 		DownloadForm.getInstance().setMainProgressText("Downloading item chunks...");
-		DownloadForm.getInstance().setMinorProgressText(toBytes(downloadedSize.get()) + " of " + toBytes(totalSize));
+		DownloadForm.getInstance().setMinorProgressText(toBytes(downloadedSize.get()) + " of " + toBytes(metaData.getTotalSize()));
 
 		List<AbstractMap.SimpleEntry<String, String>> data = new LinkedList<>();
 
-		JSONArray chunkHashNames = chunkHashList.names();
+		JSONArray chunkHashNames = metaData.getManifest_root().getJSONObject("ChunkHashList").names();
 		for (int i = 0; i < chunkHashNames.length(); i++) {
 			String name = chunkHashNames.getString(i);
-			String result = chunkHashList.getString(name);
+			String result = metaData.getManifest_root().getJSONObject("ChunkHashList").getString(name);
 
 			String hash = reverseHexEncoding(result);
-			String group = String.format("%02d", Integer.parseInt(dataGroupList.getString(name)));
+			String group = String.format("%02d", Integer.parseInt(metaData.getManifest_root().getJSONObject("DataGroupList").getString(name)));
 			data.add(new AbstractMap.SimpleEntry<>(name, chunkBaseURL + group + "/" + hash + "_" + name + ".chunk"));
 		}
 
-		File directory = new File("." + appName + "/chunks/");
+		File directory = new File("." + metaData.get_manifest_appName() + "/chunks/");
 		if (!directory.exists())
 			//noinspection ResultOfMethodCallIgnored
 			directory.mkdirs();
@@ -455,12 +437,12 @@ public class EpicItem {
 		DownloadForm.getInstance().setMainProgressText("Downloading chunks");
 		for (AbstractMap.SimpleEntry<String, String> entry : data) {
 			_service.execute(() -> {
-				File file = new File("." + appName + "/chunks/" + entry.getKey() + ".chunk");
+				File file = new File("." + metaData.get_manifest_appName() + "/chunks/" + entry.getKey() + ".chunk");
 				if (file.exists())
 					//noinspection ResultOfMethodCallIgnored
 					file.delete();
 				try (BufferedInputStream in = new BufferedInputStream(new URL(entry.getValue()).openStream());
-					 FileOutputStream fout = new FileOutputStream("." + appName + "/chunks/" + entry.getKey() + ".chunk")) {
+					 FileOutputStream fout = new FileOutputStream("." + metaData.get_manifest_appName() + "/chunks/" + entry.getKey() + ".chunk")) {
 					final byte[] content = new byte[1024];
 					long totalCount = 0;
 					int count;
@@ -470,7 +452,7 @@ public class EpicItem {
 					}
 					double chunkPercent = 100.0 / chunksCount;
 					double wholePercent = 30.0 / chunksCount;
-					DownloadForm.getInstance().setMinorProgressText(toBytes(downloadedSize.addAndGet(totalCount)) + " of " + toBytes(totalSize));
+					DownloadForm.getInstance().setMinorProgressText(toBytes(downloadedSize.addAndGet(totalCount)) + " of " + toBytes(metaData.getTotalSize()));
 					DownloadForm.getInstance().increase1Progress(chunkPercent);
 					DownloadForm.getInstance().increase2Progress(wholePercent);
 				} catch (IOException e) {
@@ -483,10 +465,12 @@ public class EpicItem {
 		}
 	}
 
-	private void decompressChunks(String appName) {
+	private void decompressChunks(EpicItemMeta metaData) {
+		String appName = metaData.get_manifest_appName();
+
 		DownloadForm.getInstance().clear1Progress();
 		final AtomicInteger chunksCount = new AtomicInteger(0);
-		File directory = new File("." + appName + "/chunks/");
+		File directory = new File("." + metaData.get_manifest_appName() + "/chunks/");
 		if (!directory.exists() || !directory.isDirectory()) {
 			throw new RuntimeException("Directory [" + appName + "/chunks] does not exist!");
 		}
@@ -544,9 +528,9 @@ public class EpicItem {
 		deleteDirectory(directory);
 	}
 
-	private void extractChunks(String appName, JSONArray fileManifestList) {
+	private void extractChunks(EpicItemMeta metaData) {
 		DownloadForm.getInstance().clear1Progress();
-		int filesCount = fileManifestList.length();
+		int filesCount = metaData.getManifest_root().getJSONArray("FileManifestList").length();
 		double chunkPercent = 100.0 / filesCount;
 		double wholePercent = 30.0 / filesCount;
 		String projectPath = SessionManager.getInstance().getUser().getProjects().get(SessionManager.getInstance().getUser().getCurrentProject());
@@ -559,7 +543,7 @@ public class EpicItem {
 		DownloadForm.getInstance().setMinorProgressText("0 of " + filesCount);
 
 		for (int i = 0; i < filesCount; i++) {
-			JSONObject manifest = fileManifestList.getJSONObject(i);
+			JSONObject manifest = metaData.getManifest_root().getJSONArray("FileManifestList").getJSONObject(i);
 			if (!manifest.has("Filename") || !manifest.has("FileChunkParts"))
 				continue;
 			String fullPath = projectPath + manifest.getString("Filename");
@@ -580,7 +564,7 @@ public class EpicItem {
 					String chunkId = chunk.getString("Guid");
 					int chunkOffset = Integer.decode("0x" + reverseHexEncoding(chunk.getString("Offset")));
 					int chunkSize = Integer.decode("0x" + reverseHexEncoding(chunk.getString("Size")));
-					try (FileInputStream fis = new FileInputStream("." + appName + "/reworked_chunks/" + chunkId + ".chunk")) {
+					try (FileInputStream fis = new FileInputStream("." + metaData.get_manifest_appName() + "/reworked_chunks/" + chunkId + ".chunk")) {
 						FileChannel channel = fis.getChannel();
 						channel.position(chunkOffset);
 						ByteBuffer buffer = ByteBuffer.allocate(chunkSize);
@@ -644,7 +628,7 @@ public class EpicItem {
 		return result;
 	}
 
-	private static String reverseHexEncoding(String chunkHash) {
+	public static String reverseHexEncoding(String chunkHash) {
 		String result = "";
 		int count = Math.min(chunkHash.length() / 3, 8);
 		for (int i = 0; i < count; ++i) {
@@ -657,7 +641,7 @@ public class EpicItem {
 		return result;
 	}
 
-	private static String toBytes(long size) {
+	public static String toBytes(long size) {
 		String result;
 		if (size < 1024)
 			result = Long.toString(size);

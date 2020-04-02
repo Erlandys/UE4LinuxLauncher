@@ -582,6 +582,7 @@ public class MainForm extends JFrame {
 			case "%longDescription%": return data.replaceAll("%longDescription%", item.getLongDescription());
 			case "%techDescription%": return data.replaceAll("%techDescription%", item.getTechnicalDetails());
 			case "%creator%": return data.replaceAll("%creator%", item.getSellerName());
+			case "%totalSize%": return data.replaceAll("%totalSize%", EpicItem.toBytes(item.getTotalSize()));
 		}
 
 		return needle;
@@ -606,7 +607,7 @@ public class MainForm extends JFrame {
 		if (item != null) {
 			data = HtmlUtils.getAssetInfo();
 
-			data = parseData(new ArrayList<>(Arrays.asList("%lastDownload%", "%title%", "%description%", "%longDescription%", "%techDescription%")), data, item);
+			data = parseData(new ArrayList<>(Arrays.asList("%lastDownload%", "%title%", "%description%", "%longDescription%", "%techDescription%", "%totalSize%")), data, item);
 
 			String firstImage = "";
 			String images = "";
@@ -713,8 +714,10 @@ public class MainForm extends JFrame {
 			return;
 
 		if (!item.isCompatible(SessionManager.getInstance().getUser().getUnrealEngineVersion())) {
-			JOptionPane.showMessageDialog(this, "This asset pack is not compatible with your [" + SessionManager.getInstance().getUser().getUnrealEngineVersion() + "] engine version!", "Not compatible!", JOptionPane.ERROR_MESSAGE);
-			return;
+			int returnVal = JOptionPane.showConfirmDialog(this, "This asset pack is not compatible with your [" + SessionManager.getInstance().getUser().getUnrealEngineVersion() + "] engine version! Do you want to Download it anyways?", "Not compatible!", JOptionPane.WARNING_MESSAGE);
+
+			if(returnVal == 2)
+				return;
 		}
 
 		if (!item.isOwned())
