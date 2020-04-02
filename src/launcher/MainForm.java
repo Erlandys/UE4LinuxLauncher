@@ -582,6 +582,7 @@ public class MainForm extends JFrame {
 			case "%longDescription%": return data.replaceAll("%longDescription%", item.getLongDescription());
 			case "%techDescription%": return data.replaceAll("%techDescription%", item.getTechnicalDetails());
 			case "%creator%": return data.replaceAll("%creator%", item.getSellerName());
+			case "%totalSize%": return data.replaceAll("%totalSize%", EpicItem.toBytes(item.getTotalSize()));
 		}
 
 		return needle;
@@ -606,7 +607,7 @@ public class MainForm extends JFrame {
 		if (item != null) {
 			data = HtmlUtils.getAssetInfo();
 
-			data = parseData(new ArrayList<>(Arrays.asList("%lastDownload%", "%title%", "%description%", "%longDescription%", "%techDescription%")), data, item);
+			data = parseData(new ArrayList<>(Arrays.asList("%lastDownload%", "%title%", "%description%", "%longDescription%", "%techDescription%", "%totalSize%")), data, item);
 
 			String firstImage = "";
 			String images = "";
