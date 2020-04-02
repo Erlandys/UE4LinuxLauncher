@@ -4,6 +4,7 @@ import launcher.managers.EngineManager;
 import launcher.managers.MarketplaceManager;
 import launcher.managers.SessionManager;
 import launcher.objects.*;
+import launcher.utils.Utils;
 
 import javax.swing.*;
 import javax.swing.event.HyperlinkEvent;
@@ -13,7 +14,9 @@ import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Collection;
+import java.nio.file.Files;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 public class MainForm extends JFrame {
 
@@ -66,6 +69,10 @@ public class MainForm extends JFrame {
 	private JLabel _selectedProject;
 	private JButton _launchUE4Button;
 	private JButton _reloadOwnedAssetsButton;
+
+	enum OwnedAssetsFilter { ALL, DOWNLOADED, NOTDOWNLOADED };
+
+	OwnedAssetsFilter ownedAssetsFilter = OwnedAssetsFilter.ALL;
 
 	private int _itemsPerPage;
 	private boolean _viewingItem;
@@ -175,9 +182,33 @@ public class MainForm extends JFrame {
 			_itemsPerPage = 8;
 			updateOwnedAssetsList();
 		});
+
+		//todo this should probably be changed for all tabs to provide the tab name in the URI (like for ownedAssets) so that the parser knows what category invoked the listener
 		_textPane1.addHyperlinkListener(e -> {
 			if (!e.getEventType().equals(HyperlinkEvent.EventType.ACTIVATED))
 				return;
+
+			if(e.getDescription().startsWith("ownedAssets")){
+				String parameters = e.getDescription().substring("ownedAssets?".length());
+
+				if(parameters.contains("filter=notdownloaded")) {
+					ownedAssetsFilter = OwnedAssetsFilter.NOTDOWNLOADED;
+					updateOwnedAssetsList();
+					return;
+				}
+				else if(parameters.contains("filter=downloaded")) {
+					ownedAssetsFilter = OwnedAssetsFilter.DOWNLOADED;
+					updateOwnedAssetsList();
+					return;
+				}
+				else  if(parameters.contains("filter=all")) {
+					ownedAssetsFilter = OwnedAssetsFilter.ALL;
+					updateOwnedAssetsList();
+					return;
+				}
+			}
+
+
 			if (e.getDescription().startsWith("item")) {
 				_caretPosition = _textPane1.getCaretPosition();
 				String data[] = e.getDescription().split((" "));
@@ -229,6 +260,7 @@ public class MainForm extends JFrame {
                 updateProjectsList();
             }
 		});
+
 		_scrollPane.getVerticalScrollBar().addAdjustmentListener(event -> {
 			if (_viewingItem)
 				return;
@@ -436,11 +468,12 @@ public class MainForm extends JFrame {
 				data.append("<td>");
 				String asset = HtmlUtils.getAssetDiv();
 				asset = asset.replaceAll("%category%", _currentCategory.getName());
-				asset = asset.replaceAll("%id%", item.getCatalogItemId());
 				String name = HtmlUtils.findText(item.getName(), 195, HtmlUtils.FONT_TITLE);
 				asset = asset.replaceAll("%title%", name);
-				asset = asset.replaceAll("%creator%", item.getSellerName());
 				asset = asset.replaceAll("%image%", item.getThumbnail().getUrl());
+
+				asset = parseData(new ArrayList<>(Arrays.asList("%lastDownload%", "%creator%", "%id%")), asset, item);
+
 				/*if (SessionManager.getInstance().getUser().getOwnedAsset(item.getCatalogItemId()) != null) {
 					asset = asset.replaceAll("%owned%", HtmlUtils.getAssetDivOwner());
 					asset = asset.replaceAll("%price%", item.isCompatible(SessionManager.getInstance().getUser().getEngineVersion()) ? "" : "Not compatible");
@@ -466,46 +499,100 @@ public class MainForm extends JFrame {
 	}
 
 	private void updateOwnedAssetsList() {
-		String html = HtmlUtils.getBaseHtml();
-		html = html.replace("%head%", HtmlUtils.getMarketHead());
-		StringBuilder data = new StringBuilder("<p align=\"center\" style=\"margin-top: 10\" style=\"font-family: Lato, Helvetica, Arial, sans-serif\">\n" +
-				"      <span style=\"font-size: 16px; color: #808080; text-shadow: 2px 2px #ff0000;\">Owned Assets</span><br>\n" +
-				"    </p><br>");
+		ArrayList<String> tableElements = new ArrayList<>();
+
+
 		int itemsInLine = 4;
+
 		int i = 0;
 		if (SessionManager.getInstance().getUser().getOwnedItems() != null) {
-			data.append("<table class=\"asset-container\">");
 			for (EpicItem item : SessionManager.getInstance().getUser().getOwnedItems()) {
+				boolean downloaded = item.getLastDownloadTime(SessionManager.getInstance().getUser().getCurrentProject()) != -1;
+
+				switch(ownedAssetsFilter){
+					case DOWNLOADED:
+						if(!downloaded)
+							continue;
+						break;
+					case NOTDOWNLOADED:
+						if(downloaded)
+							continue;
+						break;
+				}
+
 				if (i >= _itemsPerPage)
 					break;
-				if (i % itemsInLine == 0) {
-					data.append("<tr>");
-				}
-				data.append("<td>");
+
 				String asset = HtmlUtils.getAssetDiv();
 				asset = asset.replaceAll("%category%", item.getCategories().size() == 0 ? "Unknown" : item.getCategories().get(0).getName());
-				asset = asset.replaceAll("%id%", item.getCatalogItemId());
 				String name = HtmlUtils.findText(item.getName(), 195, HtmlUtils.FONT_TITLE);
 				asset = asset.replaceAll("%title%", name);
-				asset = asset.replaceAll("%creator%", item.getSellerName());
 				asset = asset.replaceAll("%image%", item.getThumbnail().getUrl());
 				asset = asset.replaceAll("%owned%", HtmlUtils.getAssetDivOwner());
 				asset = asset.replaceAll("%price%", item.isCompatible(SessionManager.getInstance().getUser().getUnrealEngineVersion()) ? "" : "Not compatible");
-				data.append(asset);
-				data.append("</td>");
+
+				asset = parseData(new ArrayList<>(Arrays.asList("%lastDownload%", "%creator%", "%id%")), asset, item);
+
+				tableElements.add(asset);
+
 				i++;
-				if (i % itemsInLine == 0)
-					data.append("</tr>");
 			}
-			data.append("</table>");
 		}
 
-		html = html.replace("%body%", data.toString());
-		_textPane1.setText(html);
+		// build html data
+		String body = Utils.getResource("launcher/html/ownedAssetsHead.html");
+		body+="<table class=\"asset-container\">";
+
+		i=0;
+		for(String element : tableElements){
+			if(i % itemsInLine == 0)
+				body+="<tr>";
+
+			body+="<td>" + element + "</td>";
+
+			i++;
+			if(i % itemsInLine == 0)
+				body+="<tr>";
+		}
+
+		body+="</table>";
+
+		_textPane1.setText(HtmlUtils.toHTML(HtmlUtils.getMarketHead(), body));
+
 		if (_itemsPerPage == 8) {
 			_textPane1.setCaretPosition(0);
 			_scrollPane.getVerticalScrollBar().setValue(0);
 		}
+	}
+
+	// parse common used item placeholders (needle) in HTML template string (data)
+	private String parseData(String needle, String data, EpicItem item){
+		switch(needle){
+			case "%lastDownload%":
+				long lastDownload = item.getLastDownloadTime(SessionManager.getInstance().getUser().getCurrentProject());
+				if(lastDownload != -1) {
+					return data.replaceAll("%lastDownload%", "last download: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(new Date(lastDownload * 1000)));
+				} else {
+					return data.replaceAll("%lastDownload%", "never downloaded");
+				}
+
+			case "%id%": return data.replaceAll("%id%", item.getCatalogItemId());
+			case "%title%":	return data.replaceAll("%title%", item.getName());
+			case "%description%": return data.replaceAll("%description%", item.getDescription());
+			case "%longDescription%": return data.replaceAll("%longDescription%", item.getLongDescription());
+			case "%techDescription%": return data.replaceAll("%techDescription%", item.getTechnicalDetails());
+			case "%creator%": return data.replaceAll("%creator%", item.getSellerName());
+		}
+
+		return needle;
+	}
+
+	// parse a bunch of placeholders
+	private String parseData(ArrayList<String> needles, String data, EpicItem item){
+		for(String needle : needles)
+			data = parseData(needle, data, item);
+
+		return data;
 	}
 
 	private void showItemInfo(String catalogItemId, int startAt) {
@@ -518,10 +605,8 @@ public class MainForm extends JFrame {
 
 		if (item != null) {
 			data = HtmlUtils.getAssetInfo();
-			data = data.replaceAll("%title%", item.getName());
-			data = data.replaceAll("%description%", item.getDescription());
-			data = data.replaceAll("%longDescription%", item.getLongDescription());
-			data = data.replaceAll("%techDescription%", item.getTechnicalDetails());
+
+			data = parseData(new ArrayList<>(Arrays.asList("%lastDownload%", "%title%", "%description%", "%longDescription%", "%techDescription%")), data, item);
 
 			String firstImage = "";
 			String images = "";

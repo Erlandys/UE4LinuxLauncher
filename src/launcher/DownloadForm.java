@@ -1,5 +1,6 @@
 package launcher;
 
+import launcher.managers.DatabaseManager;
 import launcher.managers.EngineManager;
 import launcher.managers.SessionManager;
 import launcher.objects.EpicItem;
@@ -8,6 +9,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 
 public class DownloadForm extends JFrame {
 	private JTextPane _mainInfo;
@@ -99,7 +102,23 @@ public class DownloadForm extends JFrame {
 		return DownloadForm.SingletonHolder._instance;
 	}
 
-	public void finishDownload(boolean openFolder) {
+	public void finishDownload(boolean openFolder, boolean succeed) {
+		// create a database entry if the download was successful
+		if(succeed){
+			try {
+				Connection connection = DatabaseManager.getInstance().getConnection();
+				PreparedStatement statement = connection.prepareStatement("INSERT INTO item_downloads(item_id, catalog_item_id, projectName, download_time) VALUES(?, ?, ?, ?)");
+				statement.setString(1, _item.getItemId());
+				statement.setString(2, _item.getCatalogItemId());
+				statement.setString(3, SessionManager.getInstance().getUser().getCurrentProject());
+				statement.setInt(4, (int) (System.currentTimeMillis()/1000));
+				statement.executeUpdate();
+			} catch(Exception SQLException){
+				System.out.println("failed to connect to database, download information will not be stored and so not be shown as already downloaded");
+			}
+		}
+
+
 		if (openFolder) {
 			try {
 				Desktop.getDesktop().open(new File(SessionManager.getInstance().getUser().getProjects().get(SessionManager.getInstance().getUser().getCurrentProject())));
