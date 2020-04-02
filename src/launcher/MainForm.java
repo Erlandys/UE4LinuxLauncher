@@ -713,8 +713,10 @@ public class MainForm extends JFrame {
 			return;
 
 		if (!item.isCompatible(SessionManager.getInstance().getUser().getUnrealEngineVersion())) {
-			JOptionPane.showMessageDialog(this, "This asset pack is not compatible with your [" + SessionManager.getInstance().getUser().getUnrealEngineVersion() + "] engine version!", "Not compatible!", JOptionPane.ERROR_MESSAGE);
-			return;
+			int returnVal = JOptionPane.showConfirmDialog(this, "This asset pack is not compatible with your [" + SessionManager.getInstance().getUser().getUnrealEngineVersion() + "] engine version! Do you want to Download it anyways?", "Not compatible!", JOptionPane.WARNING_MESSAGE);
+
+			if(returnVal == 2)
+				return;
 		}
 
 		if (!item.isOwned())
