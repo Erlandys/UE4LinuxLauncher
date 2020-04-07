@@ -11,6 +11,8 @@ import javax.swing.event.HyperlinkEvent;
 import javax.swing.text.DefaultCaret;
 import javax.swing.text.html.HTMLEditorKit;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -345,6 +347,15 @@ public class MainForm extends JFrame {
 			}).start();
 		});
 		_logoutButton.addActionListener(actionEvent -> doLogout());
+
+
+
+		addWindowListener(new WindowAdapter() {
+			public void windowClosing(WindowEvent we) {
+				doLogout();
+				System.exit(0);
+			}
+		});
 	}
 
 	private void doLogout() {
